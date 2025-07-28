@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 // import { Card, CardContent } from "@/components/ui/card";
+import Log from "@/images/Log.png"; 
 
 export default function Login() {
   const [, setLocation] = useLocation();
@@ -18,25 +19,21 @@ export default function Login() {
   return (
     <div className="min-h-screen gradient-bg relative overflow-hidden floating-shapes">
       <div className="flex items-center justify-center min-h-screen px-4">
-        <div className="flex w-full max-w-6xl bg-white/10 backdrop-blur-sm rounded-2xl shadow-2xl overflow-hidden">
+        <div className="flex w-full max-w-4xl bg-white/10 backdrop-blur-sm rounded-2xl shadow-2xl overflow-hidden">
         
           <div className="hidden lg:flex lg:w-1/2 flex-col justify-center items-start p-12 text-white">
             <div className="mb-8">
-              
               <div className="flex items-center mb-4">
-                <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center mr-3">
-                  <div className="w-8 h-8 bg-[hsl(213,87%,42%)] rounded-full flex items-center justify-center">
-                    <div className="w-4 h-4 border-2 border-white rounded-full"></div>
-                  </div>
+                <div className="">
+                  <img src={Log} alt="" className="w-50 h-24" /> 
                 </div>
-                <h1 className="text-4xl font-bold">Innovation</h1>
+             
               </div>
-              <p className="text-lg opacity-90 mb-8">The Future Is Better Together</p>
+              
             </div>
             <h2 className="text-3xl font-semibold mb-4">Messaging Portal</h2>
             <p className="text-lg opacity-75">Secure access to your telecommunications dashboard</p>
           </div>
-          
           
           <div className="w-full lg:w-1/2 bg-white p-8 lg:p-12">
             <div className="max-w-md mx-auto">

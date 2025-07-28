@@ -18,11 +18,14 @@ import {
   DollarSign,
   Settings,
   ChevronDown,
-  User
+  User,
+  LogOut, 
+  UserPlus 
 } from "lucide-react";
 
 export default function Dashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
 
   const navigationItems = [
     { icon: BarChart3, label: "Dashboard", active: true },
@@ -37,10 +40,14 @@ export default function Dashboard() {
     { icon: Settings, label: "Developer Portal" },
   ];
 
+  const toggleDropdown = () => {
+    setDropdownOpen(!dropdownOpen);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Top Navigation */}
-      <nav className="bg-white shadow-sm border-b border-gray-200 px-4 lg:px-6 py-4">
+      <nav className="bg-blue-700 shadow-sm border-b border-gray-200 px-4 lg:px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center">
             <Button
@@ -51,15 +58,29 @@ export default function Dashboard() {
             >
               <Menu className="w-6 h-6" />
             </Button>
-            <h1 className="ml-2 text-lg font-semibold text-gray-900">Innovation Messaging Portal</h1>
+            <h1 className="ml-2 text-lg font-semibold text-white">TelOne Messaging Portal</h1>
           </div>
           
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-2 text-sm text-gray-600">
-              <User className="w-4 h-4" />
+          <div className="relative flex items-center">
+            <div className="flex items-center space-x-2 text-sm text-white cursor-pointer" onClick={toggleDropdown}>
+              <User  className="w-4 h-4" />
               <span>User</span>
-              <ChevronDown className="w-4 h-4" />
-            </div>
+              <ChevronDown className="w-4 h-6" />
+            </div> 
+            {dropdownOpen && (
+              <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-10">
+                <div className="py-1">
+                  <Link href="/profile" className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                    <UserPlus className="w-4 h-4 mr-2" /> 
+                    My Profile
+                  </Link>
+                  <Link href="/login" className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                    <LogOut className="w-4 h-4 mr-2" /> 
+                    Log Out
+                  </Link>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </nav>
@@ -74,7 +95,7 @@ export default function Dashboard() {
           {/* Retract Button */}
           <button
             className="absolute top-4 right-4 z-50 p-2 rounded-full bg-gray-200 hover:bg-gray-300 text-gray-600"
-            onClick={() => setSidebarOpen(false)}
+            onClick={() => setSidebarOpen(false)} 
             aria-label="Retract Sidebar"
           >
             <span className="sr-only">Retract Sidebar</span>
