@@ -14,6 +14,8 @@ import Reports from "@/pages/reports";
 import SMSBalances from "@/pages/sms-balances";
 import Tariffs from "@/pages/tariffs";
 import NotFound from "@/pages/not-found";
+import Profile from "@/pages/profile";
+import DeveloperPortal from "@/pages/developer";
 
 function Router() {
   return (
@@ -29,6 +31,8 @@ function Router() {
       <Route path="/reports" component={Reports} />
       <Route path="/sms-balances" component={SMSBalances} />
       <Route path="/tariffs" component={Tariffs} />
+      <Route path="/profile" component={Profile} />
+      <Route path="/developer" component={DeveloperPortal} />
       <Route component={NotFound} />
     </Switch>
   );
