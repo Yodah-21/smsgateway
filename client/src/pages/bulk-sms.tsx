@@ -21,6 +21,8 @@ import {
 } from "lucide-react";
 import SidebarLayout from "@/components/SidebarLayout";
 import Navbar from "@/components/Navbar"; // Import the Navbar component
+import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 
 interface SMSBatch {
   id: string;
@@ -40,6 +42,7 @@ const mockBatches: SMSBatch[] = [
 export default function BulkSMS() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("pending");
+  // Modal state not needed with DialogTrigger
 
   return (
     <div>
@@ -54,10 +57,54 @@ export default function BulkSMS() {
                 <Download className="w-4 h-4 mr-2" />
                 Export to Excel
               </Button>
-              <Button className="bg-[hsl(213,87%,42%)] hover:bg-[hsl(213,87%,35%)] text-white">
-                <Calendar className="w-4 h-4 mr-2" />
-                Schedule
-              </Button>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button className="bg-[hsl(213,87%,42%)] hover:bg-[hsl(213,87%,35%)] text-white">
+                    <Calendar className="w-4 h-4 mr-2" />
+                    Schedule
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-md w-full">
+                  <DialogHeader>
+                    <DialogTitle>Schedule Bulk Message</DialogTitle>
+                  </DialogHeader>
+                  <form className="space-y-4">
+                    <div>
+                      <Label htmlFor="senderId" className="font-semibold text-red-600">* Sender ID :</Label>
+                      <select id="senderId" className="w-full border rounded px-2 py-1 mt-1">
+                        <option value="">Select</option>
+                        {/* Add options dynamically */}
+                      </select>
+                    </div>
+                    <div>
+                      <Label htmlFor="file" className="font-semibold text-red-600">* File :</Label>
+                      <input id="file" type="file" className="block mt-1" />
+                      <a href="#" className="text-blue-600 text-sm mt-1 inline-block">[Download template]</a>
+                    </div>
+                    <div>
+                      <Label htmlFor="startTime" className="font-semibold text-red-600">* Start Time :</Label>
+                      <div className="relative">
+                        <input id="startTime" type="text" placeholder="Start" className="w-full border rounded px-2 py-1 mt-1 pr-8" />
+                        <Calendar className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      </div>
+                    </div>
+                    <div>
+                      <Label htmlFor="message" className="font-semibold text-red-600">* Message :</Label>
+                      <textarea id="message" rows={4} className="w-full border rounded px-2 py-1 mt-1" />
+                      <div className="text-xs mt-1">
+                        <span className="font-semibold">Characters:</span> 0<br />
+                        <span className="font-semibold">Message Number:</span> 1
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-4 mt-4">
+                      <Button type="button" disabled className="bg-gray-200 text-gray-500 cursor-not-allowed">Send</Button>
+                      <DialogClose asChild>
+                        <Button type="button" variant="outline" className="text-blue-600 border-blue-600">Cancel</Button>
+                      </DialogClose>
+                    </div>
+                  </form>
+                </DialogContent>
+              </Dialog>
             </div>
           </div>
 

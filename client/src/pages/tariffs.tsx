@@ -16,6 +16,8 @@ import {
 } from "lucide-react";
 import SidebarLayout from "@/components/SidebarLayout";
 import Navbar from "@/components/Navbar";
+import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 
 interface TariffData {
   zwlSms: string;
@@ -26,6 +28,7 @@ interface TariffData {
 
 export default function Tariffs() {
   const [tariff, setTariff] = useState<TariffData | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
   const url = "http://172.27.34.87:8080/telonenfe/account/get-current-tarrif";
 
   useEffect(() => {
@@ -63,8 +66,45 @@ export default function Tariffs() {
       <SidebarLayout>
         <div className="max-w-7xl mx-auto">
           {/* Header */}
-          <div className="mb-8">
-            <h1 className="text-2xl font-semibold text-gray-900">SMS Tariffs</h1>
+          <div className="flex items-center justify-between mb-6">
+            <h1 className="text-2xl font-semibold text-gray-900">Tariffs</h1>
+            <Dialog open={editOpen} onOpenChange={setEditOpen}>
+              <DialogTrigger asChild>
+                <Button className="bg-[hsl(213,87%,42%)] hover:bg-[hsl(213,87%,35%)] text-white" onClick={() => setEditOpen(true)}>
+                  <Edit className="w-4 h-4 mr-2" />
+                  Edit Tariff
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-md w-full">
+                <DialogHeader>
+                  <DialogTitle>Update Tariff</DialogTitle>
+                </DialogHeader>
+                <form className="space-y-4">
+                  <div>
+                    <Label htmlFor="zwlPrice" className="font-semibold text-red-600">* ZWL Price</Label>
+                    <input id="zwlPrice" type="text" defaultValue={tariff?.zwlSms || ''} className="w-full border rounded px-2 py-1 mt-1" />
+                  </div>
+                  <div>
+                    <Label htmlFor="usdPrice" className="font-semibold text-red-600">* USD Price</Label>
+                    <input id="usdPrice" type="text" defaultValue={tariff?.usdAmountPerSMS || ''} className="w-full border rounded px-2 py-1 mt-1" />
+                  </div>
+                  <div>
+                    <Label htmlFor="status" className="font-semibold text-red-600">* status</Label>
+                    <select id="status" className="w-full border rounded px-2 py-1 mt-1" defaultValue={tariff?.status || ''}>
+                      <option value="">Select</option>
+                      <option value="Active">Active</option>
+                      <option value="Inactive">Inactive</option>
+                    </select>
+                  </div>
+                  <div className="flex items-center space-x-4 mt-4">
+                    <Button type="button" className="bg-blue-600 text-white">Save</Button>
+                    <DialogClose asChild>
+                      <Button type="button" variant="outline" className="text-blue-600 border-blue-600">Cancel</Button>
+                    </DialogClose>
+                  </div>
+                </form>
+              </DialogContent>
+            </Dialog>
           </div>
 
           {/* Data Table */}

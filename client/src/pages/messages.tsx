@@ -18,6 +18,8 @@ import {
 } from "lucide-react";
 import SidebarLayout from "@/components/SidebarLayout";
 import Navbar from "@/components/Navbar"; 
+import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 
 interface Message {
   id: string;
@@ -52,10 +54,46 @@ export default function Messages() {
                 <Download className="w-4 h-4 mr-2" />
                 Export to Excel
               </Button>
-              <Button className="bg-[hsl(213,87%,42%)] hover:bg-[hsl(213,87%,35%)] text-white">
-                <Send className="w-4 h-4 mr-2" />
-                Send Message
-              </Button>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button className="bg-[hsl(213,87%,42%)] hover:bg-[hsl(213,87%,35%)] text-white">
+                    <Send className="w-4 h-4 mr-2" />
+                    Send Message
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-md w-full">
+                  <DialogHeader>
+                    <DialogTitle>Send Message</DialogTitle>
+                  </DialogHeader>
+                  <form className="space-y-4">
+                    <div>
+                      <Label htmlFor="senderId" className="font-semibold text-red-600">* Sender ID :</Label>
+                      <select id="senderId" className="w-full border rounded px-2 py-1 mt-1">
+                        <option value="">Select</option>
+                        {/* Add options dynamically */}
+                      </select>
+                    </div>
+                    <div>
+                      <Label htmlFor="destination" className="font-semibold text-red-600">* Destination :</Label>
+                      <input id="destination" type="text" className="w-full border rounded px-2 py-1 mt-1" />
+                    </div>
+                    <div>
+                      <Label htmlFor="message" className="font-semibold text-red-600">* Message :</Label>
+                      <textarea id="message" rows={4} className="w-full border rounded px-2 py-1 mt-1" />
+                      <div className="text-xs mt-1">
+                        <span className="font-semibold">Characters:</span> 0<br />
+                        <span className="font-semibold">Message Number:</span> 1
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-4 mt-4">
+                      <Button type="button" disabled className="bg-gray-200 text-gray-500 cursor-not-allowed">Send</Button>
+                      <DialogClose asChild>
+                        <Button type="button" variant="outline" className="text-blue-600 border-blue-600">Cancel</Button>
+                      </DialogClose>
+                    </div>
+                  </form>
+                </DialogContent>
+              </Dialog>
             </div>
           </div>
 

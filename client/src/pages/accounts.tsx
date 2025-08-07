@@ -12,6 +12,10 @@ import {
 import { Plus, ChevronLeft, ChevronRight } from 'lucide-react';
 import SidebarLayout from "@/components/SidebarLayout";
 import Navbar from "@/components/Navbar";
+import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 
 interface Account {
   id: string;
@@ -98,10 +102,80 @@ export default function Accounts() {
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
             <h1 className="text-2xl font-semibold text-gray-900">Accounts</h1>
-            <Button className="bg-[hsl(213,87%,42%)] hover:bg-[hsl(213,87%,35%)] text-white">
-              <Plus className="w-4 h-4 mr-2" />
-              Add Account
-            </Button>
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button className="bg-[hsl(213,87%,42%)] hover:bg-[hsl(213,87%,35%)] text-white">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Account
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl w-full">
+                <DialogHeader>
+                  <DialogTitle>Add Account</DialogTitle>
+                </DialogHeader>
+                <form className="grid grid-cols-2 gap-x-8 gap-y-4">
+                  <div>
+                    <Label htmlFor="firstName" className="font-semibold text-red-600">* First Name</Label>
+                    <Input id="firstName" placeholder="Enter  firstname" className="mt-1" />
+                  </div>
+                  <div>
+                    <Label htmlFor="lastName" className="font-semibold text-red-600">* Last Name</Label>
+                    <Input id="lastName" placeholder="Enter  lastname" className="mt-1" />
+                  </div>
+                  <div>
+                    <Label htmlFor="userName" className="font-semibold text-red-600">* User Name</Label>
+                    <Input id="userName" placeholder="Enter  userName" className="mt-1" />
+                  </div>
+                  <div>
+                    <Label htmlFor="smsAmount" className="font-semibold text-red-600">* SMS Amount</Label>
+                    <Input id="smsAmount" placeholder="Enter  amount" className="mt-1" />
+                  </div>
+                  <div>
+                    <Label htmlFor="role" className="font-semibold text-red-600">* Role</Label>
+                    <Select>
+                      <SelectTrigger id="role" className="mt-1">
+                        <SelectValue placeholder="Select role" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="admin">Admin</SelectItem>
+                        <SelectItem value="user">User</SelectItem>
+                        <SelectItem value="manager">Manager</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="accountCode" className="font-semibold text-red-600">* Account Code</Label>
+                    <Input id="accountCode" placeholder="Enter  Account Code" className="mt-1" />
+                  </div>
+                  <div>
+                    <Label htmlFor="accountName" className="font-semibold text-red-600">* Account Name</Label>
+                    <Input id="accountName" placeholder="Account Name" className="mt-1" />
+                  </div>
+                  <div>
+                    <Label htmlFor="email" className="font-semibold text-red-600">* Email</Label>
+                    <Input id="email" placeholder="Enter  email" className="mt-1" />
+                  </div>
+                  <div>
+                    <Label htmlFor="phoneNumber" className="font-semibold text-red-600">* Phone Number</Label>
+                    <Input id="phoneNumber" placeholder="Enter phone number" className="mt-1" />
+                  </div>
+                  <div>
+                    <Label htmlFor="senderId" className="font-semibold text-red-600">* Sender ID</Label>
+                    <Input id="senderId" placeholder="Enter  senderId" className="mt-1" />
+                  </div>
+                  <div className="col-span-2">
+                    <Label htmlFor="password" className="font-semibold text-red-600">* Password</Label>
+                    <Input id="password" type="password" placeholder="Enter  password" className="mt-1" />
+                  </div>
+                  <div className="col-span-2 flex items-center space-x-4 mt-2">
+                    <Button type="button" disabled className="bg-gray-200 text-gray-500 cursor-not-allowed">Save</Button>
+                    <DialogClose asChild>
+                      <Button type="button" variant="outline" className="text-blue-600 border-blue-600">Cancel</Button>
+                    </DialogClose>
+                  </div>
+                </form>
+              </DialogContent>
+            </Dialog>
           </div>
 
           {/* Accounts Table */}

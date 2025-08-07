@@ -22,6 +22,7 @@ export default function Dashboard() {
             borderColor="border-blue-500"
             iconBg="bg-blue-500"
             icon={BarChart3}
+            onClick={() => alert('Total Sent Messages card clicked!')}
           />
           <StatsCard
             title="Success Messages"
@@ -32,6 +33,7 @@ export default function Dashboard() {
             borderColor="border-green-500"
             iconBg="bg-green-500"
             icon={MessageSquare}
+            onClick={() => alert('Success Messages card clicked!')}
           />
           <StatsCard
             title="Failed Messages"
@@ -42,6 +44,7 @@ export default function Dashboard() {
             borderColor="border-orange-500"
             iconBg="bg-orange-500"
             icon={FileText}
+            onClick={() => alert('Failed Messages card clicked!')}
           />
         </div>
 

@@ -1,4 +1,5 @@
 import { LucideIcon } from "lucide-react";
+import React from "react";
 
 interface StatsCardProps {
   title: string;
@@ -9,6 +10,7 @@ interface StatsCardProps {
   borderColor: string;
   iconBg: string;
   icon: LucideIcon;
+  onClick?: () => void;
 }
 
 export default function StatsCard({
@@ -20,9 +22,16 @@ export default function StatsCard({
   borderColor,
   iconBg,
   icon: Icon,
+  onClick,
 }: StatsCardProps) {
   return (
-    <div className={`${bgColor} rounded-xl p-6 border-l-4 ${borderColor}`}>
+    <div
+      className={`${bgColor} rounded-xl p-6 border-l-4 ${borderColor} transition cursor-pointer hover:shadow-lg hover:scale-[1.03]`}
+      onClick={onClick}
+      tabIndex={onClick ? 0 : undefined}
+      role={onClick ? "button" : undefined}
+      style={onClick ? { outline: "none" } : {}}
+    >
       <div className="flex items-center justify-between">
         <div>
           <h3 className={`text-lg font-semibold ${textColor} mb-2`}>{title}</h3>
