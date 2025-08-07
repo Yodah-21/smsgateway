@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
@@ -16,7 +16,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import SidebarLayout from "@/components/SidebarLayout";
-import Navbar from "@/components/Navbar"; 
+import Navbar from "@/components/Navbar";
 
 interface Provider {
   id: string;
@@ -25,33 +25,44 @@ interface Provider {
   countryCode: string;
 }
 
-const mockProviders: Provider[] = [
-  {
-    id: "1",
-    name: "NETONE",
-    status: true,
-    countryCode: "263",
-  },
-  {
-    id: "2",
-    name: "INNOVATION",
-    status: true,
-    countryCode: "263",
-  },
-  {
-    id: "3",
-    name: "SAGE 5G",
-    status: false,
-    countryCode: "263",
-  },
-];
-
 export default function Providers() {
-  const [providers, setProviders] = useState(mockProviders);
+  const [providers, setProviders] = useState<Provider[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const url = "http://172.27.34.87:8080/telonenfe/providers";
+
+  useEffect(() => {
+    const fetchProviders = async () => {
+      try {
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error("Failed to fetch providers");
+        }
+        const data = await response.json();
+        setProviders(data);
+      } catch (error) {
+        console.error("Error fetching providers:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProviders();
+  }, []);
+
+  const handleToggleStatus = (id: string) => {
+    setProviders(prev =>
+      prev.map(provider =>
+        provider.id === id
+          ? { ...provider, status: !provider.status }
+          : provider
+      )
+    );
+  };
 
   return (
     <div>
-      <Navbar /> 
+      <Navbar />
       <SidebarLayout>
         <div className="max-w-7xl mx-auto">
           {/* Header */}
@@ -74,26 +85,40 @@ export default function Providers() {
                     <TableHead className="font-semibold text-gray-700 py-4 px-6">Name</TableHead>
                     <TableHead className="font-semibold text-gray-700 py-4 px-6">Status</TableHead>
                     <TableHead className="font-semibold text-gray-700 py-4 px-6">Country Code</TableHead>
-                    <TableHead className="font-semibold text-gray-700 py-4 px-6">Action</TableHead>
+                    <TableHead className="font-semibold text-gray-700 py-4 px-6">Active/Deactive</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {providers.map((provider) => (
-                    <TableRow key={provider.id} className="border-b border-gray-100">
-                      <TableCell className="py-6 px-6 font-medium">{provider.name}</TableCell>
-                      <TableCell className="py-6 px-6">
-                        <span className="text-gray-600">{provider.status ? 'Active' : 'Inactive'}</span>
-                      </TableCell>
-                      <TableCell className="py-6 px-6 text-gray-600">{provider.countryCode}</TableCell>
-                      <TableCell className="py-6 px-6">
-                        <Switch
-                          checked={provider.status}
-                          onCheckedChange={() => setProviders(prev => prev.map(p => p.id === provider.id ? { ...p, status: !p.status } : p))}
-                          className="data-[state=checked]:bg-[hsl(213,87%,42%)]"
-                        />
+                  {loading ? (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center py-6 text-gray-500">
+                        Loading providers...
                       </TableCell>
                     </TableRow>
-                  ))}
+                  ) : providers.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center py-6 text-gray-500">
+                        No providers found.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    providers.map((provider) => (
+                      <TableRow key={provider.id} className="border-b border-gray-100">
+                        <TableCell className="py-6 px-6 font-medium">{provider.name}</TableCell>
+                        <TableCell className="py-6 px-6">
+                          <span className="text-gray-600">{provider.status ? 'Active' : 'Inactive'}</span>
+                        </TableCell>
+                        <TableCell className="py-6 px-6 text-gray-600">{provider.countryCode}</TableCell>
+                        <TableCell className="py-6 px-6">
+                          <Switch
+                            checked={provider.status}
+                            onCheckedChange={() => handleToggleStatus(provider.id)}
+                            className="data-[state=checked]:bg-[hsl(213,87%,42%)]"
+                          />
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
                 </TableBody>
               </Table>
             </CardContent>

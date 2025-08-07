@@ -3,25 +3,19 @@ import Navbar from "@/components/Navbar";
 
 export default function Profile() {
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      <SidebarLayout children={undefined} />
-      
-      <div className="flex-1 overflow-auto">
-        {/* Navbar should span the full width without margin */}
-        <div className="sticky top-0 z-10">
-          <Navbar />
-        </div>
-
-        {/* Main unified profile card */}
-        <main className="p-6">
-          <div className="bg-white rounded-xl shadow-lg border border-gray-200">
+    <div className="min-h-screen bg-gray-50">
+      <Navbar />
+      <SidebarLayout>
+        {/* Main Content */}
+        <div className="p-2 w-full min-h-screen">
+          <div className="bg-white rounded-xl shadow-lg border border-gray-200 w-full min-h-[400px]">
             {/* Card header */}
             <div className="border-b border-gray-200 px-6 py-4">
               <h1 className="text-xl font-semibold text-gray-800">Profile Information</h1>
             </div>
 
             {/* Card content */}
-            <div className="p-6">
+            <div className="p-8">
               <div className="flex flex-col lg:flex-row gap-8">
                 {/* Avatar section */}
                 <div className="flex flex-col items-center lg:items-start lg:w-1/3">
@@ -34,7 +28,6 @@ export default function Profile() {
                     </div>
                     <div className="absolute bottom-1 right-1 w-6 h-6 bg-green-500 rounded-full border-2 border-white shadow-md"></div>
                   </div>
-
                   <div className="text-center lg:text-left">
                     <h2 className="text-xl font-bold">Telone Account</h2>
                     <p className="text-gray-500 mb-3">Premium User</p>
@@ -47,7 +40,7 @@ export default function Profile() {
 
                 {/* Details section */}
                 <div className="lg:w-2/3">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     {[
                       { label: 'FULL NAME', value: 'Surname' },
                       { label: 'EMAIL', value: 'javascriptsage@gmail.com' },
@@ -57,7 +50,7 @@ export default function Profile() {
                     ].map((item) => (
                       <div key={item.label} className="border-b border-gray-100 pb-4">
                         <p className="text-xs font-medium text-gray-500 uppercase tracking-widest mb-2">{item.label}</p>
-                        <p className="text-lg font-semibold">{item.value}</p>
+                        <p className="text-lg font-semibold text-gray-800">{item.value}</p>
                       </div>
                     ))}
                   </div>
@@ -65,8 +58,8 @@ export default function Profile() {
               </div>
             </div>
           </div>
-        </main>
-      </div>
+        </div>
+      </SidebarLayout>
     </div>
   );
 }

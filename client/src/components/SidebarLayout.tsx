@@ -68,9 +68,9 @@ export default function SidebarLayout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="flex">
-        <aside className="w-72 bg-white shadow-sm h-screen sticky top-2">
-          <div className="p-1 border-b border-gray-200"> {/* Reduced padding */}
-            <div className="flex items-center">
+        <aside className="w-72 bg-white shadow-sm h-screen ">
+          <div className="p-2 border-b border-gray-200">
+            <div className="flex items-center justify-center py-2">
               <img src={Log} alt="" className="w-44 h-16 mr-1 -mt-7" /> 
             </div>
           </div>
@@ -99,7 +99,6 @@ export default function SidebarLayout({ children }: { children: ReactNode }) {
             </ul>
           </nav>
         </aside>
-        {/* Main Content */}
         <main className="flex-1 p-6">
           {children}
         </main>

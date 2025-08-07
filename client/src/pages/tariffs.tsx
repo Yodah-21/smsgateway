@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -14,28 +15,51 @@ import {
   ChevronRight,
 } from "lucide-react";
 import SidebarLayout from "@/components/SidebarLayout";
-import Navbar from "@/components/Navbar"; 
+import Navbar from "@/components/Navbar";
 
 interface TariffData {
   zwlSms: string;
-  usdSms: string;
+  usdAmountPerSMS: string;
   status: string;
   lastUpdate: string;
 }
 
-const tariffData: TariffData[] = [
-  {
-    zwlSms: "0.13",
-    usdSms: "0",
-    status: "Active",
-    lastUpdate: "1715762830074",
-  },
-];
-
 export default function Tariffs() {
+  const [tariff, setTariff] = useState<TariffData | null>(null);
+  const url = "http://172.27.34.87:8080/telonenfe/account/get-current-tarrif";
+
+  useEffect(() => {
+    const fetchTariff = async () => {
+      try {
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error("Failed to fetch tariff data");
+        }
+
+        const json = await response.json();
+
+        // Extract from message field
+        const data = json.message;
+
+        const formatted: TariffData = {
+          zwlSms: data.zwlSms,
+          usdAmountPerSMS: data.usdSms,
+          status: data.status,
+          lastUpdate: new Date(Number(data.lastUpdate)).toLocaleString(),
+        };
+
+        setTariff(formatted);
+      } catch (error) {
+        console.error("Error fetching tariff:", error);
+      }
+    };
+
+    fetchTariff();
+  }, []);
+
   return (
     <div>
-      <Navbar /> 
+      <Navbar />
       <SidebarLayout>
         <div className="max-w-7xl mx-auto">
           {/* Header */}
@@ -57,13 +81,11 @@ export default function Tariffs() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {tariffData.map((tariff, index) => (
-                    <TableRow key={index} className="border-b border-gray-100">
+                  {tariff ? (
+                    <TableRow className="border-b border-gray-100">
                       <TableCell className="px-6 py-4 text-gray-900">{tariff.zwlSms}</TableCell>
-                      <TableCell className="px-6 py-4 text-gray-900">{tariff.usdSms}</TableCell>
-                      <TableCell className="px-6 py-4">
-                        <span className="text-gray-600">{tariff.status}</span>
-                      </TableCell>
+                      <TableCell className="px-6 py-4 text-gray-900">{tariff.usdAmountPerSMS}</TableCell>
+                      <TableCell className="px-6 py-4 text-gray-600">{tariff.status}</TableCell>
                       <TableCell className="px-6 py-4 text-gray-900">{tariff.lastUpdate}</TableCell>
                       <TableCell className="px-6 py-4">
                         <Button size="sm" className="bg-[hsl(213,87%,42%)] hover:bg-[hsl(213,87%,35%)] text-white">
@@ -71,7 +93,13 @@ export default function Tariffs() {
                         </Button>
                       </TableCell>
                     </TableRow>
-                  ))}
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center py-6 text-gray-500">
+                        Loading tariff...
+                      </TableCell>
+                    </TableRow>
+                  )}
                 </TableBody>
               </Table>
             </CardContent>

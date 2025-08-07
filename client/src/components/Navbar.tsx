@@ -11,7 +11,7 @@ export default function Navbar() {
   };
 
   return (
-    <nav className="bg-blue-700 shadow-sm border-b border-gray-200 px-2 lg:px-4 py-4 ml-72"> 
+    <nav className="bg-blue-700 shadow-sm border-b border-gray-200 px-8 lg:px-4 py-4 ml-[287px] "> 
       <div className="flex items-center justify-between">
         <h1 className="text-md font-semibold text-white">TelOne Messaging Portal</h1> 
         <div className="relative flex items-center">
