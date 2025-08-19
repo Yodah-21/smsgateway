@@ -1,33 +1,61 @@
+import { useEffect, useState } from "react";
 import {
-  LineChart,
-  Line,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   Legend,
   ResponsiveContainer,
-  Area,
-  AreaChart,
 } from "recharts";
-import { mockWeeklyData } from "@/lib/mock-data";
 
 export default function WeeklyChart() {
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchWeeklyData() {
+      try {
+        const response = await fetch(
+          "http://172.27.34.87:8080/telonenfe/sms/report/count/weekly"
+        );
+        if (!response.ok) {
+          throw new Error("Network response was not ok");
+        }
+        const result = await response.json();
+
+        // Map backend fields to chart data
+        const formattedData = result.map((item) => ({
+          day: item.dayOfWeek,
+          totalSent: item.totalCount,     // or item.count
+          sentSuccess: item.countSuccess,
+          failed: item.countFailed,
+        }));
+
+        setData(formattedData);
+        setLoading(false);
+      } catch (error) {
+        console.error("Error fetching weekly data:", error);
+        setLoading(false);
+      }
+    }
+
+    fetchWeeklyData();
+  }, []);
+
+  if (loading) return <div>Loading chart...</div>;
+
   return (
     <div className="h-80">
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart
-          data={mockWeeklyData}
-          margin={{
-            top: 20,
-            right: 30,
-            left: 20,
-            bottom: 5,
-          }}
+          data={data}
+          margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
         >
           <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
           <XAxis dataKey="day" stroke="#6B7280" />
-          <YAxis stroke="#6B7280" domain={[0, 1]} />
+          <YAxis stroke="#6B7280" />
           <Tooltip
             contentStyle={{
               backgroundColor: "white",

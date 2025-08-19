@@ -1,3 +1,5 @@
+"use client";
+
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -33,49 +35,74 @@ export default function SenderIds() {
   const [senderIDs, setSenderIDs] = useState<SenderID[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const entriesPerPage = 5;
-  const url = "http://172.27.34.87:8080/telonenfe/accounts/senderid";
 
-  // Fetch sender IDs from the API
+  const senderIdUrl = "http://172.27.34.87:8080/telonenfe/accounts/senderid";
+
+  // Hardcoded list of providers
+  const providers = [
+    "telonetestuser",
+    "insureme",
+    "rguveya",
+    "teloneprod",
+    "tgavhu",
+    "TelZone",
+    "SmartWifi",
+    "test",
+    "Opal2",
+    "Kudakwashe.mtudza",
+    "macdonald.gomo",
+    "ISolutions",
+    "SmartCity",
+  ];
+
+  // Fetch sender IDs from API
   useEffect(() => {
     const fetchSenderIDs = async () => {
       try {
-        const response = await fetch(url);
-        if (!response.ok) {
-          throw new Error("Network response was not ok");
-        }
-        const data: SenderID[] = await response.json();
+        const res = await fetch(senderIdUrl);
+        if (!res.ok) throw new Error("Failed to fetch sender IDs");
+        const data: SenderID[] = await res.json();
         setSenderIDs(data);
-      } catch (error) {
-        console.error("Failed to fetch sender IDs:", error);
+      } catch (err) {
+        console.error(err);
       }
     };
     fetchSenderIDs();
   }, []);
 
-  // Clamp currentPage if senderIDs changes and page is out of range
-  useEffect(() => {
-    const totalPages = Math.max(1, Math.ceil(senderIDs.length / entriesPerPage));
-    if (currentPage > totalPages) setCurrentPage(totalPages);
-    if (currentPage < 1) setCurrentPage(1);
-  }, [senderIDs, currentPage]);
+  // Add sender ID both locally and via API
+  const handleAddSenderID = async (userName: string, senderName: string) => {
+    try {
+      // Use dynamic provider in the endpoint
+      const apiUrl = `http://172.27.34.87:8080/telonenfe/accounts/registersenderid/${userName}`;
 
-  const handleAddSenderID = () => {
-    const newSenderID: SenderID = {
-      statusMsg: "NEW SENDER",
-      accountStatus: "ACTIVE",
-      userName: "new_sender",
-      senderId: `Sender_${senderIDs.length + 1}`,
-    };
-    setSenderIDs((prev) => [...prev, newSenderID]);
-    setCurrentPage(1); // Always reset to first page after add
+      const res = await fetch(apiUrl, {
+        method: "PUT", // or PUT depending on backend
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ senderIdName: senderName }), // Correct field name
+      });
+
+      if (!res.ok) throw new Error("Failed to save sender ID");
+
+      // Add to local state after successful API save
+      const newSenderID: SenderID = {
+        statusMsg: "NEW SENDER",
+        accountStatus: "ACTIVE",
+        userName,
+        senderId: senderName,
+      };
+      setSenderIDs((prev) => [...prev, newSenderID]);
+      setCurrentPage(1);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to save sender ID. Please try again.");
+    }
   };
 
   const handleDeleteSenderID = (id: string) => {
     setSenderIDs((prev) => prev.filter((sender) => sender.senderId !== id));
-    // currentPage will be clamped by useEffect
   };
 
-  // Pagination logic
   const totalPages = Math.max(1, Math.ceil(senderIDs.length / entriesPerPage));
   const paginatedSenderIDs = senderIDs.slice(
     (currentPage - 1) * entriesPerPage,
@@ -90,69 +117,77 @@ export default function SenderIds() {
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
             <h1 className="text-2xl font-semibold text-gray-900">Sender IDs</h1>
-            <div className="flex space-x-3">
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button className="bg-[hsl(213,87%,42%)] hover:bg-[hsl(213,87%,35%)] text-white">
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add Sender ID
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-md w-full">
-                  <DialogHeader>
-                    <DialogTitle>Add Sender ID</DialogTitle>
-                  </DialogHeader>
-                  <form className="space-y-4">
-                    <div>
-                      <Label
-                        htmlFor="idName"
-                        className="font-semibold text-red-600"
-                      >
-                        * ID Name :
-                      </Label>
-                      <input
-                        id="idName"
-                        type="text"
-                        className="w-full border rounded px-2 py-1 mt-1"
-                      />
-                    </div>
-                    <div>
-                      <Label
-                        htmlFor="userName"
-                        className="font-semibold text-red-600"
-                      >
-                        * User Name :
-                      </Label>
-                      <select
-                        id="userName"
-                        className="w-full border rounded px-2 py-1 mt-1"
-                      >
-                        <option value="">Select Provider</option>
-                        {/* Add options dynamically */}
-                      </select>
-                    </div>
-                    <div className="flex items-center space-x-4 mt-4">
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button className="bg-[hsl(213,87%,42%)] hover:bg-[hsl(213,87%,35%)] text-white flex items-center">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Sender ID
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-md w-full">
+                <DialogHeader>
+                  <DialogTitle>Add Sender ID</DialogTitle>
+                </DialogHeader>
+                <form
+                  className="space-y-4"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const form = e.target as any;
+                    const senderName = form.senderName.value;
+                    const userName = form.userName.value;
+                    if (senderName && userName) {
+                      handleAddSenderID(userName, senderName);
+                      form.reset();
+                    }
+                  }}
+                >
+                  <div>
+                    <Label htmlFor="senderName" className="font-semibold text-black">
+                      * ID Name:
+                    </Label>
+                    <input
+                      id="senderName"
+                      name="senderName"
+                      type="text"
+                      className="w-full border rounded px-2 py-1 mt-1"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="userName" className="font-semibold text-black">
+                      * Provider:
+                    </Label>
+                    <select
+                      id="userName"
+                      name="userName"
+                      className="w-full border rounded px-2 py-1 mt-1"
+                      required
+                    >
+                      <option value="">Select Provider</option>
+                      {providers.map((p) => (
+                        <option key={p} value={p}>
+                          {p}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex items-center space-x-4 mt-4">
+                    <Button type="submit" className="bg-blue-600 text-white">
+                      Save
+                    </Button>
+                    <DialogClose asChild>
                       <Button
                         type="button"
-                        disabled
-                        className="bg-gray-200 text-gray-500 cursor-not-allowed"
+                        variant="outline"
+                        className="text-blue-600 border-blue-600"
                       >
-                        Save
+                        Cancel
                       </Button>
-                      <DialogClose asChild>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="text-blue-600 border-blue-600"
-                        >
-                          Cancel
-                        </Button>
-                      </DialogClose>
-                    </div>
-                  </form>
-                </DialogContent>
-              </Dialog>
-            </div>
+                    </DialogClose>
+                  </div>
+                </form>
+              </DialogContent>
+            </Dialog>
           </div>
 
           {/* Sender IDs Table */}
@@ -168,7 +203,7 @@ export default function SenderIds() {
                       Status
                     </TableHead>
                     <TableHead className="font-semibold text-gray-700 py-4 px-6">
-                      User  Name
+                      Provider
                     </TableHead>
                     <TableHead className="font-semibold text-gray-700 py-4 px-6">
                       Action
@@ -177,21 +212,10 @@ export default function SenderIds() {
                 </TableHeader>
                 <TableBody>
                   {paginatedSenderIDs.map((sender) => (
-                    <TableRow
-                      key={sender.senderId}
-                      className="border-b border-gray-100"
-                    >
-                      <TableCell className="py-6 px-6 font-medium">
-                        {sender.senderId}
-                      </TableCell>
-                      <TableCell className="py-6 px-6">
-                        <span className="text-gray-600">
-                          {sender.accountStatus}
-                        </span>
-                      </TableCell>
-                      <TableCell className="py-6 px-6 text-gray-600">
-                        {sender.userName}
-                      </TableCell>
+                    <TableRow key={sender.senderId} className="border-b border-gray-100">
+                      <TableCell className="py-6 px-6 font-medium">{sender.senderId}</TableCell>
+                      <TableCell className="py-6 px-6">{sender.accountStatus}</TableCell>
+                      <TableCell className="py-6 px-6 text-gray-600">{sender.userName}</TableCell>
                       <TableCell className="py-6 px-6">
                         <Button
                           variant="outline"
@@ -217,13 +241,13 @@ export default function SenderIds() {
                   Previous
                 </Button>
                 <span className="text-sm">
-                  Page {currentPage} of {totalPages || 1}
+                  Page {currentPage} of {totalPages}
                 </span>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages || totalPages === 0}
+                  disabled={currentPage === totalPages}
                 >
                   Next
                 </Button>

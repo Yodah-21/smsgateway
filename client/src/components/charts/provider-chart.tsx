@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import {
   BarChart,
   Bar,
@@ -8,20 +9,49 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
-import { mockProviderData } from "@/lib/mock-data";
 
 export default function ProviderChart() {
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchProviderData() {
+      try {
+        const response = await fetch(
+          "http://172.27.34.87:8080/telonenfe/sms/report/count/providers"
+        );
+        if (!response.ok) {
+          throw new Error("Network response was not ok");
+        }
+        const result = await response.json();
+
+        // Map backend fields to chart data
+        const formattedData = result.map((item) => ({
+          name: item.provider,
+          totalSent: item.totalCount,      // or item.count if preferred
+          sentSuccess: item.countSuccess,
+          failed: item.countFailed,
+        }));
+
+        setData(formattedData);
+        setLoading(false);
+      } catch (error) {
+        console.error("Error fetching provider data:", error);
+        setLoading(false);
+      }
+    }
+
+    fetchProviderData();
+  }, []);
+
+  if (loading) return <div>Loading chart...</div>;
+
   return (
     <div className="h-80">
       <ResponsiveContainer width="100%" height="100%">
         <BarChart
-          data={mockProviderData}
-          margin={{
-            top: 20,
-            right: 30,
-            left: 20,
-            bottom: 5,
-          }}
+          data={data}
+          margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
         >
           <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
           <XAxis dataKey="name" stroke="#6B7280" />

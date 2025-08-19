@@ -1,3 +1,5 @@
+"use client";
+
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -12,7 +14,7 @@ import {
 import { Plus, ChevronLeft, ChevronRight } from 'lucide-react';
 import SidebarLayout from "@/components/SidebarLayout";
 import Navbar from "@/components/Navbar";
-import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
+import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
@@ -38,9 +40,7 @@ export default function Accounts() {
     const fetchAccounts = async () => {
       try {
         const response = await fetch(url);
-        if (!response.ok) {
-          throw new Error("Failed to fetch accounts");
-        }
+        if (!response.ok) throw new Error("Failed to fetch accounts");
         const rawData = await response.json();
         const data: Account[] = rawData.map((account: any) => ({
           ...account,
@@ -52,46 +52,54 @@ export default function Accounts() {
         console.error("Error fetching accounts:", error);
       }
     };
-
     fetchAccounts();
   }, []);
 
-  // Calculate pagination
+  // Pagination logic
   const totalItems = accounts.length;
   const totalPages = Math.ceil(totalItems / itemsPerPage);
-  
-  // Adjust for last page with few items (merge if last page has only 1-2 items)
   const shouldMergeLastPage = totalItems % itemsPerPage <= 2 && totalItems % itemsPerPage > 0 && totalPages > 1;
   const adjustedTotalPages = shouldMergeLastPage ? totalPages - 1 : totalPages;
-  
-  // Calculate items to show
   const startIndex = (currentPage - 1) * itemsPerPage;
   let endIndex = startIndex + itemsPerPage;
-  
-  // If we're on the last page and should merge, show more items
-  if (currentPage === adjustedTotalPages && shouldMergeLastPage) {
-    endIndex = totalItems;
-  }
-  
+  if (currentPage === adjustedTotalPages && shouldMergeLastPage) endIndex = totalItems;
   const currentAccounts = accounts.slice(startIndex, endIndex);
+  useEffect(() => { if (currentPage > adjustedTotalPages && adjustedTotalPages > 0) setCurrentPage(1); }, [currentPage, adjustedTotalPages]);
+  const goToPage = (page: number) => setCurrentPage(Math.max(1, Math.min(page, adjustedTotalPages)));
+  const goToPrevious = () => setCurrentPage(prev => Math.max(1, prev - 1));
+  const goToNext = () => setCurrentPage(prev => Math.min(adjustedTotalPages, prev + 1));
 
-  // Reset to first page if current page exceeds total pages
-  useEffect(() => {
-    if (currentPage > adjustedTotalPages && adjustedTotalPages > 0) {
-      setCurrentPage(1);
+  // Add Account API
+  const handleAddAccount = async (formData: any, closeDialog: () => void) => {
+    try {
+      const payload = {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        accountName: formData.accountName,
+        phoneNumber: formData.phoneNumber,
+        email: formData.email,
+        senderId: formData.senderId,
+        password: formData.password,
+        smsAmount: Number(formData.smsAmount),
+        role: formData.role,
+        accountCode: formData.accountCode,
+      };
+
+      const res = await fetch("http://172.27.34.87:8080/telonenfe/account/update", {
+        method: "POST", // or PUT depending on your backend
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) throw new Error("Failed to save account");
+
+      const savedAccount = await res.json();
+      setAccounts(prev => [savedAccount, ...prev]); // Add new account on top
+      closeDialog();
+    } catch (err) {
+      console.error(err);
+      alert("Failed to save account. Please try again.");
     }
-  }, [currentPage, adjustedTotalPages]);
-
-  const goToPage = (page: number) => {
-    setCurrentPage(Math.max(1, Math.min(page, adjustedTotalPages)));
-  };
-
-  const goToPrevious = () => {
-    setCurrentPage(prev => Math.max(1, prev - 1));
-  };
-
-  const goToNext = () => {
-    setCurrentPage(prev => Math.min(adjustedTotalPages, prev + 1));
   };
 
   return (
@@ -113,25 +121,45 @@ export default function Accounts() {
                 <DialogHeader>
                   <DialogTitle>Add Account</DialogTitle>
                 </DialogHeader>
-                <form className="grid grid-cols-2 gap-x-8 gap-y-4">
+                <form
+                  className="grid grid-cols-2 gap-x-8 gap-y-4"
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    const form = e.target as any;
+                    const data = {
+                      firstName: form.firstName.value,
+                      lastName: form.lastName.value,
+                      userName: form.userName.value,
+                      smsAmount: form.smsAmount.value,
+                      role: form.role.value,
+                      accountCode: form.accountCode.value,
+                      accountName: form.accountName.value,
+                      email: form.email.value,
+                      phoneNumber: form.phoneNumber.value,
+                      senderId: form.senderId.value,
+                      password: form.password.value,
+                    };
+                    await handleAddAccount(data, () => form.reset());
+                  }}
+                >
                   <div>
-                    <Label htmlFor="firstName" className="font-semibold text-red-600">* First Name</Label>
-                    <Input id="firstName" placeholder="Enter  firstname" className="mt-1" />
+                    <Label htmlFor="firstName">* First Name</Label>
+                    <Input id="firstName" placeholder="Enter firstname" className="mt-1" required />
                   </div>
                   <div>
-                    <Label htmlFor="lastName" className="font-semibold text-red-600">* Last Name</Label>
-                    <Input id="lastName" placeholder="Enter  lastname" className="mt-1" />
+                    <Label htmlFor="lastName">* Last Name</Label>
+                    <Input id="lastName" placeholder="Enter lastname" className="mt-1" required />
                   </div>
                   <div>
-                    <Label htmlFor="userName" className="font-semibold text-red-600">* User Name</Label>
-                    <Input id="userName" placeholder="Enter  userName" className="mt-1" />
+                    <Label htmlFor="userName">* User Name</Label>
+                    <Input id="userName" placeholder="Enter userName" className="mt-1" required />
                   </div>
                   <div>
-                    <Label htmlFor="smsAmount" className="font-semibold text-red-600">* SMS Amount</Label>
-                    <Input id="smsAmount" placeholder="Enter  amount" className="mt-1" />
+                    <Label htmlFor="smsAmount">* SMS Amount</Label>
+                    <Input id="smsAmount" placeholder="Enter amount" className="mt-1" required />
                   </div>
                   <div>
-                    <Label htmlFor="role" className="font-semibold text-red-600">* Role</Label>
+                    <Label htmlFor="role">* Role</Label>
                     <Select>
                       <SelectTrigger id="role" className="mt-1">
                         <SelectValue placeholder="Select role" />
@@ -144,31 +172,31 @@ export default function Accounts() {
                     </Select>
                   </div>
                   <div>
-                    <Label htmlFor="accountCode" className="font-semibold text-red-600">* Account Code</Label>
-                    <Input id="accountCode" placeholder="Enter  Account Code" className="mt-1" />
+                    <Label htmlFor="accountCode">* Account Code</Label>
+                    <Input id="accountCode" placeholder="Enter Account Code" className="mt-1" required />
                   </div>
                   <div>
-                    <Label htmlFor="accountName" className="font-semibold text-red-600">* Account Name</Label>
-                    <Input id="accountName" placeholder="Account Name" className="mt-1" />
+                    <Label htmlFor="accountName">* Account Name</Label>
+                    <Input id="accountName" placeholder="Account Name" className="mt-1" required />
                   </div>
                   <div>
-                    <Label htmlFor="email" className="font-semibold text-red-600">* Email</Label>
-                    <Input id="email" placeholder="Enter  email" className="mt-1" />
+                    <Label htmlFor="email">* Email</Label>
+                    <Input id="email" placeholder="Enter email" className="mt-1" required />
                   </div>
                   <div>
-                    <Label htmlFor="phoneNumber" className="font-semibold text-red-600">* Phone Number</Label>
-                    <Input id="phoneNumber" placeholder="Enter phone number" className="mt-1" />
+                    <Label htmlFor="phoneNumber">* Phone Number</Label>
+                    <Input id="phoneNumber" placeholder="Enter phone number" className="mt-1" required />
                   </div>
                   <div>
-                    <Label htmlFor="senderId" className="font-semibold text-red-600">* Sender ID</Label>
-                    <Input id="senderId" placeholder="Enter  senderId" className="mt-1" />
+                    <Label htmlFor="senderId">* Sender ID</Label>
+                    <Input id="senderId" placeholder="Enter senderId" className="mt-1" required />
                   </div>
                   <div className="col-span-2">
-                    <Label htmlFor="password" className="font-semibold text-red-600">* Password</Label>
-                    <Input id="password" type="password" placeholder="Enter  password" className="mt-1" />
+                    <Label htmlFor="password">* Password</Label>
+                    <Input id="password" type="password" placeholder="Enter password" className="mt-1" required />
                   </div>
                   <div className="col-span-2 flex items-center space-x-4 mt-2">
-                    <Button type="button" disabled className="bg-gray-200 text-gray-500 cursor-not-allowed">Save</Button>
+                    <Button type="submit" className="bg-blue-600 text-white">Save</Button>
                     <DialogClose asChild>
                       <Button type="button" variant="outline" className="text-blue-600 border-blue-600">Cancel</Button>
                     </DialogClose>
@@ -203,28 +231,14 @@ export default function Accounts() {
                       <TableCell className="px-3 py-4">{account.accountName}</TableCell>
                       <TableCell className="px-3 py-4 break-all">{account.email}</TableCell>
                       <TableCell className="px-3 py-4">
-                        {account.smsBalance != null
-                          ? account.smsBalance.toLocaleString()
-                          : "N/A"}
+                        {account.smsBalance != null ? account.smsBalance.toLocaleString() : "N/A"}
                       </TableCell>
                       <TableCell className="px-3 py-4">{account.status}</TableCell>
                       <TableCell className="px-3 py-4">
                         {account.status === "ACTIVE" ? (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="border-blue-200 text-blue-600 hover:bg-blue-50"
-                          >
-                            Suspend
-                          </Button>
+                          <Button variant="outline" size="sm" className="border-blue-200 text-blue-600 hover:bg-blue-50">Suspend</Button>
                         ) : (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="border-green-200 text-green-600 hover:bg-green-50"
-                          >
-                            Activate
-                          </Button>
+                          <Button variant="outline" size="sm" className="border-green-200 text-green-600 hover:bg-green-50">Activate</Button>
                         )}
                       </TableCell>
                     </TableRow>
@@ -238,44 +252,17 @@ export default function Accounts() {
                   <div className="text-sm text-gray-700">
                     Showing {startIndex + 1} to {Math.min(endIndex, totalItems)} of {totalItems} accounts
                   </div>
-                  
                   <div className="flex items-center space-x-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={goToPrevious}
-                      disabled={currentPage === 1}
-                      className="flex items-center"
-                    >
+                    <Button variant="outline" size="sm" onClick={goToPrevious} disabled={currentPage === 1} className="flex items-center">
                       <ChevronLeft className="w-4 h-4 mr-1" />
                       Previous
                     </Button>
-
                     <div className="flex items-center space-x-1">
                       {Array.from({ length: adjustedTotalPages }, (_, i) => i + 1).map((page) => (
-                        <Button
-                          key={page}
-                          variant={currentPage === page ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => goToPage(page)}
-                          className={`w-8 h-8 p-0 ${
-                            currentPage === page
-                              ? "bg-[hsl(213,87%,42%)] hover:bg-[hsl(213,87%,35%)] text-white"
-                              : "text-gray-700 hover:bg-gray-100"
-                          }`}
-                        >
-                          {page}
-                        </Button>
+                        <Button key={page} variant={currentPage === page ? "default" : "outline"} size="sm" onClick={() => goToPage(page)} className={`w-8 h-8 p-0 ${currentPage === page ? "bg-[hsl(213,87%,42%)] hover:bg-[hsl(213,87%,35%)] text-white" : "text-gray-700 hover:bg-gray-100"}`}>{page}</Button>
                       ))}
                     </div>
-
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={goToNext}
-                      disabled={currentPage === adjustedTotalPages}
-                      className="flex items-center"
-                    >
+                    <Button variant="outline" size="sm" onClick={goToNext} disabled={currentPage === adjustedTotalPages} className="flex items-center">
                       Next
                       <ChevronRight className="w-4 h-4 ml-1" />
                     </Button>

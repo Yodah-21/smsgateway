@@ -1,52 +1,103 @@
-import { mockStats } from "@/lib/mock-data";
+import { useEffect, useState } from "react";
 import { BarChart3, MessageSquare, FileText } from "lucide-react";
 import ProviderChart from "@/components/charts/provider-chart";
 import WeeklyChart from "@/components/charts/weekly-chart";
 import StatsCard from "@/components/ui/stats-card";
 import SidebarLayout from "@/components/SidebarLayout";
-import Navbar from "@/components/Navbar"; // Import the Navbar component
+import Navbar from "@/components/Navbar";
 
 export default function Dashboard() {
+  const [stats, setStats] = useState({
+    totalCount: 0,
+    countSuccess: 0,
+    countFailed: 0,
+    provider: "",
+    country: "",
+    retries: 0,
+    dateStart: "",
+    dateEnd: "",
+    dateDelivered: "",
+    dayOfWeek: "",
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const res = await fetch(
+          "http://172.27.34.87:8080/telonenfe/sms/report/count"
+        );
+        if (!res.ok) throw new Error("Failed to fetch stats");
+        const data = await res.json();
+
+        setStats({
+          totalCount: data.totalCount || 0,
+          countSuccess: data.countSuccess || 0,
+          countFailed: data.countFailed || 0,
+          provider: data.provider || "",
+          country: data.country || "",
+          retries: data.retries || 0,
+          dateStart: data.dateStart || "",
+          dateEnd: data.dateEnd || "",
+          dateDelivered: data.dateDelivered || "",
+          dayOfWeek: data.dayOfWeek || "",
+        });
+      } catch (err) {
+        console.error("Error fetching stats:", err);
+        setError("Unable to load statistics");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStats();
+  }, []);
+
   return (
     <div>
-      <Navbar /> {/* Add the Navbar component here */}
+      <Navbar />
       <SidebarLayout>
         {/* Statistics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <StatsCard
             title="Total Sent Messages"
-            value={mockStats.totalSent}
+            value={loading ? "..." : stats.totalCount}
             bgColor="bg-blue-100"
             textColor="text-blue-900"
             valueColor="text-blue-800"
             borderColor="border-blue-500"
             iconBg="bg-blue-500"
             icon={BarChart3}
-            onClick={() => alert('Total Sent Messages card clicked!')}
           />
           <StatsCard
             title="Success Messages"
-            value={mockStats.successSent}
+            value={loading ? "..." : stats.countSuccess}
             bgColor="bg-green-100"
             textColor="text-green-900"
             valueColor="text-green-800"
             borderColor="border-green-500"
             iconBg="bg-green-500"
             icon={MessageSquare}
-            onClick={() => alert('Success Messages card clicked!')}
           />
           <StatsCard
             title="Failed Messages"
-            value={mockStats.failedSent}
+            value={loading ? "..." : stats.countFailed}
             bgColor="bg-orange-100"
             textColor="text-orange-900"
             valueColor="text-orange-800"
             borderColor="border-orange-500"
             iconBg="bg-orange-500"
             icon={FileText}
-            onClick={() => alert('Failed Messages card clicked!')}
           />
         </div>
+
+        {/* Error Display */}
+        {error && (
+          <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-800 rounded">
+            {error}
+          </div>
+        )}
 
         {/* Charts Section */}
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
