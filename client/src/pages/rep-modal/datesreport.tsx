@@ -17,11 +17,10 @@ const DatesReportPage: React.FC = () => {
   const [startTime, setStartTime] = useState<string>("");
   const [endTime, setEndTime] = useState<string>("");
 
-  // Filter logic can be implemented here if needed
   const filteredData = mockData; // Replace with actual filter
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div className="p-2 bg-gray-50 min-h-screen">
       <h1 className="text-2xl font-bold mb-6">Dates Report</h1>
 
       <div className="flex gap-4 mb-6">

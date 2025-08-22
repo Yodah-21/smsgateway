@@ -33,5 +33,12 @@ export default defineConfig({
       strict: true,
       deny: ["**/.*"],
     },
+    proxy: {
+      "/api": {
+        target: "http://172.27.6.91:8080",
+        changeOrigin: true,
+        secure: false,
+      },
+    },
   },
 });
