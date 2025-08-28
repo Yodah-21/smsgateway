@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -38,7 +38,6 @@ export default function SenderIds() {
 
   const senderIdUrl = "http://172.27.34.87:8080/telonenfe/accounts/senderid";
 
-  // Hardcoded list of providers
   const providers = [
     "telonetestuser",
     "insureme",
@@ -55,43 +54,49 @@ export default function SenderIds() {
     "SmartCity",
   ];
 
-  // Fetch sender IDs from API
+  // Fetch all sender IDs
   useEffect(() => {
     const fetchSenderIDs = async () => {
       try {
         const res = await fetch(senderIdUrl);
         if (!res.ok) throw new Error("Failed to fetch sender IDs");
         const data: SenderID[] = await res.json();
-        setSenderIDs(data);
+        setSenderIDs(data || []);
       } catch (err) {
         console.error(err);
+        setSenderIDs([]);
       }
     };
     fetchSenderIDs();
   }, []);
 
-  // Add sender ID both locally and via API
+  const totalPages = Math.ceil(senderIDs.length / entriesPerPage) || 1;
+
+  // Clamp currentPage to valid range
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+    if (currentPage < 1) setCurrentPage(1);
+  }, [totalPages, currentPage]);
+
+  // Paginate sender IDs
+  const paginatedSenderIDs = useMemo(() => {
+    const start = (currentPage - 1) * entriesPerPage;
+    return senderIDs.slice(start, start + entriesPerPage);
+  }, [senderIDs, currentPage]);
+
+  // Add sender ID
   const handleAddSenderID = async (userName: string, senderName: string) => {
     try {
-      // Use dynamic provider in the endpoint
       const apiUrl = `http://172.27.34.87:8080/telonenfe/accounts/registersenderid/${userName}`;
-
       const res = await fetch(apiUrl, {
-        method: "PUT", // or PUT depending on backend
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ senderIdName: senderName }), // Correct field name
+        body: JSON.stringify({ senderIdName: senderName }),
       });
-
       if (!res.ok) throw new Error("Failed to save sender ID");
 
-      // Add to local state after successful API save
-      const newSenderID: SenderID = {
-        statusMsg: "NEW SENDER",
-        accountStatus: "ACTIVE",
-        userName,
-        senderId: senderName,
-      };
-      setSenderIDs((prev) => [...prev, newSenderID]);
+      const refreshed = await (await fetch(senderIdUrl)).json();
+      setSenderIDs(refreshed || []);
       setCurrentPage(1);
     } catch (err) {
       console.error(err);
@@ -99,15 +104,19 @@ export default function SenderIds() {
     }
   };
 
-  const handleDeleteSenderID = (id: string) => {
-    setSenderIDs((prev) => prev.filter((sender) => sender.senderId !== id));
-  };
+  // Delete sender ID
+  const handleDeleteSenderID = async (sender: SenderID) => {
+    try {
+      const apiUrl = `http://172.27.34.87:8080/telonenfe/accounts/senderid/${sender.senderId}`;
+      await fetch(apiUrl, { method: "DELETE" });
 
-  const totalPages = Math.max(1, Math.ceil(senderIDs.length / entriesPerPage));
-  const paginatedSenderIDs = senderIDs.slice(
-    (currentPage - 1) * entriesPerPage,
-    (currentPage - 1) * entriesPerPage + entriesPerPage
-  );
+      const updated = senderIDs.filter((s) => s.senderId !== sender.senderId);
+      setSenderIDs(updated);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to delete sender ID.");
+    }
+  };
 
   return (
     <div>
@@ -190,48 +199,53 @@ export default function SenderIds() {
             </Dialog>
           </div>
 
-          {/* Sender IDs Table */}
+          {/* Table */}
           <Card>
             <CardContent className="p-0">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-gray-50">
-                    <TableHead className="font-semibold text-gray-700 py-4 px-6">
-                      Name
-                    </TableHead>
-                    <TableHead className="font-semibold text-gray-700 py-4 px-6">
-                      Status
-                    </TableHead>
-                    <TableHead className="font-semibold text-gray-700 py-4 px-6">
-                      Provider
-                    </TableHead>
-                    <TableHead className="font-semibold text-gray-700 py-4 px-6">
-                      Action
-                    </TableHead>
+                    <TableHead className="font-semibold text-gray-700 py-4 px-6">Name</TableHead>
+                    <TableHead className="font-semibold text-gray-700 py-4 px-6">Status</TableHead>
+                    <TableHead className="font-semibold text-gray-700 py-4 px-6">Provider</TableHead>
+                    <TableHead className="font-semibold text-gray-700 py-4 px-6">Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {paginatedSenderIDs.map((sender) => (
-                    <TableRow key={sender.senderId} className="border-b border-gray-100">
-                      <TableCell className="py-6 px-6 font-medium">{sender.senderId}</TableCell>
-                      <TableCell className="py-6 px-6">{sender.accountStatus}</TableCell>
-                      <TableCell className="py-6 px-6 text-gray-600">{sender.userName}</TableCell>
-                      <TableCell className="py-6 px-6">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="border-red-200 text-red-600 hover:bg-red-50"
-                          onClick={() => handleDeleteSenderID(sender.senderId)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                  {paginatedSenderIDs.length > 0 ? (
+                    paginatedSenderIDs.map((sender) => (
+                      <TableRow
+                        key={`${sender.userName}-${sender.senderId}`}
+                        className="border-b border-gray-100"
+                      >
+                        <TableCell className="py-6 px-6 font-medium">{sender.senderId}</TableCell>
+                        <TableCell className="py-6 px-6">{sender.accountStatus}</TableCell>
+                        <TableCell className="py-6 px-6 text-gray-600">{sender.userName}</TableCell>
+                        <TableCell className="py-6 px-6">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="border-red-200 text-red-600 hover:bg-red-50"
+                            onClick={() => handleDeleteSenderID(sender)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center py-6 text-gray-500">
+                        No sender IDs found.
                       </TableCell>
                     </TableRow>
-                  ))}
+                  )}
                 </TableBody>
               </Table>
-              {/* Pagination Controls */}
-              <div className="flex justify-end items-center gap-2 p-4">
+
+              {/* Pagination with clickable numbers */}
+              <div className="flex justify-end items-center gap-2 p-4 flex-wrap">
+                {/* Previous Button */}
                 <Button
                   variant="outline"
                   size="sm"
@@ -240,9 +254,21 @@ export default function SenderIds() {
                 >
                   Previous
                 </Button>
-                <span className="text-sm">
-                  Page {currentPage} of {totalPages}
-                </span>
+
+                {/* Page Numbers */}
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                  <Button
+                    key={page}
+                    size="sm"
+                    variant={page === currentPage ? "default" : "outline"}
+                    className={page === currentPage ? "bg-blue-600 text-white" : ""}
+                    onClick={() => setCurrentPage(page)}
+                  >
+                    {page}
+                  </Button>
+                ))}
+
+                {/* Next Button */}
                 <Button
                   variant="outline"
                   size="sm"

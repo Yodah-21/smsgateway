@@ -20,14 +20,18 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 
 interface Account {
-  id: string;
+  id: number;
+  userName: string;
+  password: string;
+  accountName: string;
+  accountCode: string;
   firstName: string;
   lastName: string;
-  phoneNumber: string;
-  accountName: string;
   email: string;
-  smsBalance?: number;
-  status: string;
+  phoneNumber: string;
+  accountStatus: string;
+  smsUnits: number;
+  senderId: string;
 }
 
 export default function Accounts() {
@@ -41,12 +45,7 @@ export default function Accounts() {
       try {
         const response = await fetch(url);
         if (!response.ok) throw new Error("Failed to fetch accounts");
-        const rawData = await response.json();
-        const data: Account[] = rawData.map((account: any) => ({
-          ...account,
-          smsBalance: account.smsUnits,
-          status: account.accountStatus,
-        }));
+        const data: Account[] = await response.json();
         setAccounts(data);
       } catch (error) {
         console.error("Error fetching accounts:", error);
@@ -58,47 +57,97 @@ export default function Accounts() {
   // Pagination logic
   const totalItems = accounts.length;
   const totalPages = Math.ceil(totalItems / itemsPerPage);
-  const shouldMergeLastPage = totalItems % itemsPerPage <= 2 && totalItems % itemsPerPage > 0 && totalPages > 1;
-  const adjustedTotalPages = shouldMergeLastPage ? totalPages - 1 : totalPages;
   const startIndex = (currentPage - 1) * itemsPerPage;
-  let endIndex = startIndex + itemsPerPage;
-  if (currentPage === adjustedTotalPages && shouldMergeLastPage) endIndex = totalItems;
+  const endIndex = startIndex + itemsPerPage;
   const currentAccounts = accounts.slice(startIndex, endIndex);
-  useEffect(() => { if (currentPage > adjustedTotalPages && adjustedTotalPages > 0) setCurrentPage(1); }, [currentPage, adjustedTotalPages]);
-  const goToPage = (page: number) => setCurrentPage(Math.max(1, Math.min(page, adjustedTotalPages)));
+
+  const goToPage = (page: number) => setCurrentPage(Math.max(1, Math.min(page, totalPages)));
   const goToPrevious = () => setCurrentPage(prev => Math.max(1, prev - 1));
-  const goToNext = () => setCurrentPage(prev => Math.min(adjustedTotalPages, prev + 1));
+  const goToNext = () => setCurrentPage(prev => Math.min(totalPages, prev + 1));
 
   // Add Account API
   const handleAddAccount = async (formData: any, closeDialog: () => void) => {
     try {
+      // Frontend duplicate check
+      const duplicateUserName = accounts.find(acc => acc.userName === formData.userName);
+      const duplicateAccountName = accounts.find(acc => acc.accountName === formData.accountName);
+      if (duplicateUserName) {
+        alert("This userName already exists!");
+        return;
+      }
+      if (duplicateAccountName) {
+        alert("This accountName already exists!");
+        return;
+      }
+
       const payload = {
+        id: 0,
+        userName: formData.userName,
+        password: formData.password,
+        accountName: formData.accountName,
+        accountCode: formData.accountCode,
         firstName: formData.firstName,
         lastName: formData.lastName,
-        accountName: formData.accountName,
-        phoneNumber: formData.phoneNumber,
         email: formData.email,
+        phoneNumber: formData.phoneNumber,
+        accountStatus: "ACTIVE",
+        smsUnits: Number(formData.smsUnits),
         senderId: formData.senderId,
-        password: formData.password,
-        smsAmount: Number(formData.smsAmount),
-        role: formData.role,
-        accountCode: formData.accountCode,
       };
 
-      const res = await fetch("http://172.27.34.87:8080/telonenfe/account/update", {
-        method: "POST", // or PUT depending on your backend
+      const res = await fetch("http://172.27.34.87:8080/telonenfe/account/register", {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
 
-      if (!res.ok) throw new Error("Failed to save account");
+      if (!res.ok) {
+        const text = await res.text(); 
+        alert(text || `Failed to save account. Status: ${res.status}`);
+        return;
+      }
 
-      const savedAccount = await res.json();
-      setAccounts(prev => [savedAccount, ...prev]); // Add new account on top
+      const savedAccount: Account = await res.json();
+
+      setAccounts(prev => [...prev, savedAccount]); // Add new account at the end
       closeDialog();
+
+      // Move to last page if needed
+      const newTotalItems = accounts.length + 1;
+      const newTotalPages = Math.ceil(newTotalItems / itemsPerPage);
+      setCurrentPage(newTotalPages);
+
     } catch (err) {
       console.error(err);
       alert("Failed to save account. Please try again.");
+    }
+  };
+
+  // Delete Account
+  const handleDeleteAccount = async (accountId: number) => {
+    if (!confirm("Are you sure you want to permanently delete this account?")) return;
+
+    try {
+      const res = await fetch(`http://172.27.34.87:8080/telonenfe/account/${accountId}`, {
+        method: "DELETE",
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        alert(text || `Failed to delete account. Status: ${res.status}`);
+        return;
+      }
+
+      setAccounts(prev => prev.filter(acc => acc.id !== accountId));
+
+      // Adjust current page if last item was removed
+      const newTotalItems = accounts.length - 1;
+      const newTotalPages = Math.ceil(newTotalItems / itemsPerPage);
+      if (currentPage > newTotalPages) setCurrentPage(newTotalPages);
+
+    } catch (err) {
+      console.error(err);
+      alert("Failed to delete account. Please try again.");
     }
   };
 
@@ -130,7 +179,7 @@ export default function Accounts() {
                       firstName: form.firstName.value,
                       lastName: form.lastName.value,
                       userName: form.userName.value,
-                      smsAmount: form.smsAmount.value,
+                      smsUnits: form.smsAmount.value,
                       role: form.role.value,
                       accountCode: form.accountCode.value,
                       accountName: form.accountName.value,
@@ -231,15 +280,16 @@ export default function Accounts() {
                       <TableCell className="px-3 py-4">{account.accountName}</TableCell>
                       <TableCell className="px-3 py-4 break-all">{account.email}</TableCell>
                       <TableCell className="px-3 py-4">
-                        {account.smsBalance != null ? account.smsBalance.toLocaleString() : "N/A"}
+                        {account.smsUnits != null ? account.smsUnits.toLocaleString() : "N/A"}
                       </TableCell>
-                      <TableCell className="px-3 py-4">{account.status}</TableCell>
-                      <TableCell className="px-3 py-4">
-                        {account.status === "ACTIVE" ? (
+                      <TableCell className="px-3 py-4">{account.accountStatus}</TableCell>
+                      <TableCell className="px-3 py-4 flex space-x-2">
+                        {account.accountStatus === "ACTIVE" ? (
                           <Button variant="outline" size="sm" className="border-blue-200 text-blue-600 hover:bg-blue-50">Suspend</Button>
                         ) : (
                           <Button variant="outline" size="sm" className="border-green-200 text-green-600 hover:bg-green-50">Activate</Button>
                         )}
+                        <Button variant="destructive" size="sm" onClick={() => handleDeleteAccount(account.id)}>Delete</Button>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -247,7 +297,7 @@ export default function Accounts() {
               </Table>
 
               {/* Pagination */}
-              {adjustedTotalPages > 1 && (
+              {totalPages > 1 && (
                 <div className="flex items-center justify-between px-4 py-4 border-t bg-gray-50">
                   <div className="text-sm text-gray-700">
                     Showing {startIndex + 1} to {Math.min(endIndex, totalItems)} of {totalItems} accounts
@@ -258,11 +308,11 @@ export default function Accounts() {
                       Previous
                     </Button>
                     <div className="flex items-center space-x-1">
-                      {Array.from({ length: adjustedTotalPages }, (_, i) => i + 1).map((page) => (
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
                         <Button key={page} variant={currentPage === page ? "default" : "outline"} size="sm" onClick={() => goToPage(page)} className={`w-8 h-8 p-0 ${currentPage === page ? "bg-[hsl(213,87%,42%)] hover:bg-[hsl(213,87%,35%)] text-white" : "text-gray-700 hover:bg-gray-100"}`}>{page}</Button>
                       ))}
                     </div>
-                    <Button variant="outline" size="sm" onClick={goToNext} disabled={currentPage === adjustedTotalPages} className="flex items-center">
+                    <Button variant="outline" size="sm" onClick={goToNext} disabled={currentPage === totalPages} className="flex items-center">
                       Next
                       <ChevronRight className="w-4 h-4 ml-1" />
                     </Button>
