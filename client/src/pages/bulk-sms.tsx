@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import Papa from "papaparse";
 
 interface SMSBatch {
   id: string;
@@ -40,6 +41,9 @@ export default function BulkSMS() {
   const [startTime, setStartTime] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [csvPreview, setCsvPreview] = useState<any[] | null>(null);
+  const [csvHeaders, setCsvHeaders] = useState<string[] | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
 
   // Fetch batch data
   useEffect(() => {
@@ -108,6 +112,31 @@ export default function BulkSMS() {
     batch.senderAccount.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  // CSV file change handler
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    setFile(file);
+    if (file) {
+      Papa.parse(file, {
+        header: true,
+        skipEmptyLines: true,
+        complete: (results: any) => {
+          const data = results.data;
+          const headers = results.meta.fields || (data.length > 0 ? Object.keys(data[0]) : []);
+          setCsvHeaders(headers);
+          setCsvPreview(data.slice(0, 5));
+          setShowPreview(true);
+        },
+        error: () => {
+          toast.error("Failed to parse CSV file");
+        },
+      });
+    } else {
+      setCsvPreview(null);
+      setShowPreview(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
@@ -156,7 +185,7 @@ export default function BulkSMS() {
                         type="file"
                         required
                         accept=".csv,.xlsx"
-                        onChange={(e) => setFile(e.target.files?.[0] || null)}
+                        onChange={handleFileChange}
                         className="block w-full text-sm text-gray-500
                         file:mr-4 file:py-2 file:px-4
                         file:rounded-md file:border-0
@@ -165,6 +194,37 @@ export default function BulkSMS() {
                         hover:file:bg-blue-100"
                       />
                     </div>
+
+                    {/* CSV Preview */}
+                    {showPreview && csvPreview && (
+                      <div className="mt-4">
+                        <Label className="font-medium">CSV Preview</Label>
+                        <div className="max-h-60 overflow-auto border rounded-md mt-2">
+                          <table className="min-w-full divide-y divide-gray-200">
+                            <thead className="bg-gray-100">
+                              <tr>
+                                {csvHeaders?.map((header) => (
+                                  <th key={header} className="px-4 py-2 text-left text-sm font-medium text-gray-500">
+                                    {header}
+                                  </th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-200">
+                              {csvPreview.slice(0, 5).map((row, rowIndex) => (
+                                <tr key={rowIndex}>
+                                  {csvHeaders?.map((header) => (
+                                    <td key={header} className="px-4 py-2 text-sm text-gray-700">
+                                      {row[header]}
+                                    </td>
+                                  ))}
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
 
                     <div className="flex justify-end gap-3 pt-2">
                       <DialogClose asChild>
@@ -308,8 +368,45 @@ export default function BulkSMS() {
               </Card>
             </TabsContent>
           </Tabs>
+
+          {/* CSV Preview Modal */}
+          <Dialog open={showPreview} onOpenChange={setShowPreview}>
+            <DialogContent className="max-w-lg">
+              <DialogHeader>
+                <DialogTitle>CSV Preview (First 5 Rows)</DialogTitle>
+              </DialogHeader>
+              {csvPreview && csvHeaders && (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full border text-sm">
+                    <thead>
+                      <tr>
+                        {csvHeaders.map((header) => (
+                          <th key={header} className="border px-2 py-1 bg-gray-100">{header}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {csvPreview.map((row, idx) => (
+                        <tr key={idx}>
+                          {csvHeaders.map((header) => (
+                            <td key={header} className="border px-2 py-1">{row[header]}</td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              <div className="flex justify-end pt-4">
+                <Button onClick={() => setShowPreview(false)} type="button" variant="outline">
+                  Close
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
       </SidebarLayout>
     </div>
   );
 }
+
