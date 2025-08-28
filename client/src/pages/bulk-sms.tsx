@@ -195,6 +195,17 @@ export default function BulkSMS() {
                       />
                     </div>
 
+                    <div>
+                      <Label className="font-medium">
+                        Message Template <span className="text-red-500">*</span>
+                      </Label>
+                      <input
+                        type="text"
+                        placeholder="Dear %S, Your Account Number has received %S. Your new Wallet Balance is %S"
+                        className="w-full border rounded-md px-3 py-2 mt-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+
                     {/* CSV Preview */}
                     {showPreview && csvPreview && (
                       <div className="mt-4">
@@ -409,4 +420,5 @@ export default function BulkSMS() {
     </div>
   );
 }
+
 
