@@ -45,6 +45,8 @@ export default function BulkSMS() {
   const [csvHeaders, setCsvHeaders] = useState<string[] | null>(null);
   const [showPreview, setShowPreview] = useState(false);
   const [messageTemplate, setMessageTemplate] = useState("");
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
 
   // Fetch batch data
   useEffect(() => {
@@ -75,15 +77,8 @@ export default function BulkSMS() {
       const formData = new FormData();
       formData.append("file", file);
       formData.append("messageTemplate", messageTemplate);
-
-        const executionTimeWithSeconds =
-            startTime.length === 16 ? `${startTime}:00` : startTime;
-
-        formData.append("executionTime", executionTimeWithSeconds);
-
-
-      // formData.append("executionTime", startTime);
-      // Debug: log formData keys and values
+      const executionTimeWithSeconds = startTime.length === 16 ? `${startTime}:00` : startTime;
+      formData.append("executionTime", executionTimeWithSeconds);
       for (let pair of formData.entries()) {
         console.log(pair[0]+ ': ' + pair[1]);
       }
@@ -101,7 +96,8 @@ export default function BulkSMS() {
         data = { message: text };
       }
       if (!res.ok) throw new Error(data.message || "Failed to schedule messages");
-      toast.success("CSV uploaded and messages scheduled successfully!");
+      setSuccessMessage("Bulk messages have been sent to all recipients successfully!");
+      setShowSuccessModal(true);
       setStartTime("");
       setFile(null);
       setMessageTemplate("");
@@ -423,9 +419,25 @@ export default function BulkSMS() {
               </div>
             </DialogContent>
           </Dialog>
+
+        
+          <Dialog open={showSuccessModal} onOpenChange={setShowSuccessModal}>
+            <DialogContent className="max-w-md flex flex-col items-center justify-center text-center">
+              <div className="flex flex-col items-center gap-4 py-6">
+                <svg width="64" height="64" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="text-green-500">
+                  <circle cx="12" cy="12" r="10" strokeWidth="2" stroke="currentColor" fill="#d1fae5" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12l2 2 4-4" stroke="#10b981" />
+                </svg>
+                <h2 className="text-xl font-bold text-green-700">Success!</h2>
+                <p className="text-gray-700">{successMessage}</p>
+              </div>
+              <Button className="bg-green-600 hover:bg-green-700 text-white mt-4" onClick={() => setShowSuccessModal(false)}>
+                Close
+              </Button>
+            </DialogContent>
+          </Dialog>
         </div>
       </SidebarLayout>
     </div>
   );
 }
-
