@@ -436,6 +436,23 @@ export default function BulkSMS() {
               </Button>
             </DialogContent>
           </Dialog>
+          
+          <Dialog open={showBackendErrorModal} onOpenChange={setShowBackendErrorModal}>
+            <DialogContent className="max-w-md flex flex-col items-center justify-center text-center">
+              <div className="flex flex-col items-center gap-4 py-6">
+                <svg width="64" height="64" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="text-red-500">
+                  <circle cx="12" cy="12" r="10" strokeWidth="2" stroke="currentColor" fill="#fee2e2" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01" stroke="#ef4444" />
+                </svg>
+                <h2 className="text-xl font-bold text-red-700">Backend Unreachable. Try connecting to the Bulk SMS Endpoint</h2>
+                <p className="text-gray-700">{backendErrorMessage}</p>
+              </div>
+              <Button className="bg-red-600 hover:bg-red-700 text-white mt-4" onClick={() => setShowBackendErrorModal(false)}>
+                Close
+              </Button>
+            </DialogContent>
+          </Dialog>
+          
         </div>
       </SidebarLayout>
     </div>
