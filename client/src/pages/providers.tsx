@@ -1,4 +1,6 @@
-import { useEffect, useState } from "react";
+"use client";
+
+import { useEffect, useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
@@ -27,17 +29,19 @@ interface Provider {
   id: string;
   code: string;
   name: string;
-  status: boolean | string;
+  status: boolean;
   countryCode: string;
 }
 
 export default function Providers() {
   const [providers, setProviders] = useState<Provider[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const entriesPerPage = 5;
 
   const url = "http://172.27.34.87:8080/telonenfe/providers";
 
-  // Fetch all providers
+  // Fetch providers
   useEffect(() => {
     const fetchProviders = async () => {
       try {
@@ -46,9 +50,9 @@ export default function Providers() {
 
         const data = await response.json();
 
-        const normalizedData = data.map((p: any, index: number) => ({
+        const normalizedData: Provider[] = data.map((p: any, index: number) => ({
           ...p,
-          status: p.status === true || p.status === "true",
+          status: p.status === true || p.status === "true", // force boolean
           id: p.id || `temp-${index}`,
         }));
 
@@ -63,9 +67,9 @@ export default function Providers() {
     fetchProviders();
   }, []);
 
-  // Optimistic toggle
+  // Toggle provider status
   const handleToggleStatus = async (code: string, currentStatus: boolean) => {
-    // Update UI immediately
+    // Optimistic UI update
     setProviders((prev) =>
       prev.map((provider) =>
         provider.code === code ? { ...provider, status: !currentStatus } : provider
@@ -82,8 +86,7 @@ export default function Providers() {
       console.log("Backend confirmed status update");
     } catch (error) {
       console.error("Error updating status:", error);
-
-      // Rollback if backend failed
+      // Rollback UI if backend fails
       setProviders((prev) =>
         prev.map((provider) =>
           provider.code === code ? { ...provider, status: currentStatus } : provider
@@ -91,6 +94,14 @@ export default function Providers() {
       );
     }
   };
+
+  // Pagination logic
+  const totalPages = Math.ceil(providers.length / entriesPerPage) || 1;
+
+  const paginatedProviders = useMemo(() => {
+    const start = (currentPage - 1) * entriesPerPage;
+    return providers.slice(start, start + entriesPerPage);
+  }, [providers, currentPage]);
 
   return (
     <div>
@@ -189,14 +200,14 @@ export default function Providers() {
                         Loading providers...
                       </TableCell>
                     </TableRow>
-                  ) : providers.length === 0 ? (
+                  ) : paginatedProviders.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={4} className="text-center py-6 text-gray-500">
                         No providers found.
                       </TableCell>
                     </TableRow>
                   ) : (
-                    providers.map((provider) => (
+                    paginatedProviders.map((provider) => (
                       <TableRow key={provider.id} className="border-b border-gray-100">
                         <TableCell className="py-6 px-6 font-medium">{provider.name}</TableCell>
                         <TableCell className="py-6 px-6">
@@ -211,9 +222,9 @@ export default function Providers() {
                         <TableCell className="py-6 px-6 text-gray-600">{provider.countryCode}</TableCell>
                         <TableCell className="py-6 px-6">
                           <Switch
-                            checked={!!provider.status}
+                            checked={provider.status}
                             onCheckedChange={() =>
-                              handleToggleStatus(provider.code, !!provider.status)
+                              handleToggleStatus(provider.code, provider.status)
                             }
                             className="data-[state=checked]:bg-[hsl(213,87%,42%)]"
                           />
@@ -228,17 +239,35 @@ export default function Providers() {
 
           {/* Pagination */}
           <div className="flex items-center justify-center space-x-2 mt-6">
-            <Button variant="outline" size="sm" className="flex items-center">
-              <ChevronLeft className="w-4 h-4" />
-            </Button>
             <Button
               variant="outline"
               size="sm"
-              className="bg-[hsl(213,87%,42%)] text-white border-[hsl(213,87%,42%)]"
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              className="flex items-center"
             >
-              1
+              <ChevronLeft className="w-4 h-4" />
             </Button>
-            <Button variant="outline" size="sm" className="flex items-center">
+
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+              <Button
+                key={page}
+                size="sm"
+                variant={page === currentPage ? "default" : "outline"}
+                className={page === currentPage ? "bg-[hsl(213,87%,42%)] text-white" : ""}
+                onClick={() => setCurrentPage(page)}
+              >
+                {page}
+              </Button>
+            ))}
+
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              className="flex items-center"
+            >
               <ChevronRight className="w-4 h-4" />
             </Button>
           </div>
