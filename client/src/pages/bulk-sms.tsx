@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import Papa from "papaparse";
 
 interface SMSBatch {
   id: string;
@@ -40,6 +41,12 @@ export default function BulkSMS() {
   const [startTime, setStartTime] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [csvPreview, setCsvPreview] = useState<any[] | null>(null);
+  const [csvHeaders, setCsvHeaders] = useState<string[] | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
+  const [messageTemplate, setMessageTemplate] = useState("");
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
 
   // Fetch batch data
   useEffect(() => {
@@ -61,41 +68,39 @@ export default function BulkSMS() {
   }, []);
 
   const handleSend = async () => {
-    if (!startTime || !file) {
-      toast.error("Please select execution time and upload CSV file");
+    if (!startTime || !file || !messageTemplate) {
+      toast.error("Please select execution time, upload CSV file, and enter a message template");
       return;
     }
-
     try {
       setIsLoading(true);
-
-      // 1️⃣ Upload CSV
       const formData = new FormData();
       formData.append("file", file);
-
-      const uploadRes = await fetch("/api/csv/upload", {
+      formData.append("messageTemplate", messageTemplate);
+      const executionTimeWithSeconds = startTime.length === 16 ? `${startTime}:00` : startTime;
+      formData.append("executionTime", executionTimeWithSeconds);
+      for (let pair of formData.entries()) {
+        console.log(pair[0]+ ': ' + pair[1]);
+      }
+      const res = await fetch("http://172.27.6.123:8080/sms/bulk", {
         method: "POST",
         body: formData,
       });
-
-      const uploadData = await uploadRes.json();
-      if (!uploadRes.ok) throw new Error(uploadData.message || "CSV upload failed");
-
-      // 2️⃣ Send executionTime to schedule messages
-      const smsRes = await fetch("/api/sms/sms/once", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ executionTime: startTime }),
-      });
-
-      const smsData = await smsRes.json();
-      if (!smsRes.ok) throw new Error(smsData.message || "Failed to schedule messages");
-
-      toast.success("CSV uploaded and messages scheduled successfully!");
+      console.log('Response status:', res.status);
+      const text = await res.text();
+      console.log('Raw response:', text);
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (e) {
+        data = { message: text };
+      }
+      if (!res.ok) throw new Error(data.message || "Failed to schedule messages");
+      setSuccessMessage("Bulk messages have been sent to all recipients successfully!");
+      setShowSuccessModal(true);
       setStartTime("");
       setFile(null);
+      setMessageTemplate("");
     } catch (err: any) {
       toast.error(err.message || "Operation failed");
       console.error(err);
@@ -108,6 +113,31 @@ export default function BulkSMS() {
     batch.senderAccount.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+//This function Ashton is for CSV preview usapuse
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    setFile(file);
+    if (file) {
+      Papa.parse(file, {
+        header: true,
+        skipEmptyLines: true,
+        complete: (results: any) => {
+          const data = results.data;
+          const headers = results.meta.fields || (data.length > 0 ? Object.keys(data[0]) : []);
+          setCsvHeaders(headers);
+          setCsvPreview(data.slice(0, 8));
+          setShowPreview(true);
+        },
+        error: () => {
+          toast.error("Failed to parse CSV file");
+        },
+      });
+    } else {
+      setCsvPreview(null);
+      setShowPreview(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
@@ -118,35 +148,35 @@ export default function BulkSMS() {
             <h1 className="text-2xl font-semibold text-gray-900">Bulk SMS Management</h1>
             <div className="flex flex-col sm:flex-row gap-3">
               <Dialog>
-                <DialogTrigger asChild>
-                  <Button className="bg-blue-600 hover:bg-blue-700 text-white">
-                    <Calendar className="w-4 h-4 mr-2" />
-                    Schedule Messages
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-md">
-                  <DialogHeader>
-                    <DialogTitle>Schedule Bulk Messages</DialogTitle>
-                  </DialogHeader>
-                  <form
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      handleSend();
-                    }}
-                    className="space-y-4"
-                  >
-                    <div>
-                      <Label className="font-medium">
-                        Execution Time <span className="text-red-500">*</span>
-                      </Label>
-                      <input
-                        type="datetime-local"
-                        required
-                        value={startTime}
-                        onChange={(e) => setStartTime(e.target.value)}
-                        className="w-full border rounded-md px-3 py-2 mt-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      />
-                    </div>
+                  <DialogTrigger asChild>
+                      <Button className="bg-blue-600 hover:bg-blue-700 text-white">
+                          <Calendar className="w-4 h-4 mr-2" />
+                          Schedule Messages
+                      </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-md">
+                      <DialogHeader>
+                          <DialogTitle>Schedule Bulk Messages</DialogTitle>
+                      </DialogHeader>
+                      <form
+                          onSubmit={(e) => {
+                              e.preventDefault();
+                              handleSend();
+                          }}
+                          className="space-y-4"
+                      >
+                          <div>
+                              <Label className="font-medium">
+                                  Execution Time <span className="text-red-500">*</span>
+                              </Label>
+                              <input
+                                  type="datetime-local"
+                                  required
+                                  value={startTime}
+                                  onChange={(e) => setStartTime(e.target.value)}
+                                  className="w-full border rounded-md px-3 py-2 mt-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              />
+                          </div>
 
                     <div>
                       <Label className="font-medium">
@@ -156,7 +186,7 @@ export default function BulkSMS() {
                         type="file"
                         required
                         accept=".csv,.xlsx"
-                        onChange={(e) => setFile(e.target.files?.[0] || null)}
+                        onChange={handleFileChange}
                         className="block w-full text-sm text-gray-500
                         file:mr-4 file:py-2 file:px-4
                         file:rounded-md file:border-0
@@ -165,6 +195,51 @@ export default function BulkSMS() {
                         hover:file:bg-blue-100"
                       />
                     </div>
+
+                    <div>
+                      <Label className="font-medium">
+                        Message Template <span className="text-red-500">*</span>
+                      </Label>
+                      <textarea
+                        placeholder="Dear %s, Your Account Number has received %s. Your new Wallet Balance is %s"
+                        className="w-full border rounded-md px-3 py-2 mt-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-h-[100px]"
+                        rows={4}
+                        value={messageTemplate}
+                        onChange={e => setMessageTemplate(e.target.value)}
+                        required
+                      />
+                    </div>
+
+                    {/* CSV Preview */}
+                    {showPreview && csvPreview && (
+                      <div className="mt-4">
+                        <Label className="font-medium">CSV Preview</Label>
+                        <div className="max-h-60 overflow-auto border rounded-md mt-2">
+                          <table className="min-w-full divide-y divide-gray-200">
+                            <thead className="bg-gray-100">
+                              <tr>
+                                {csvHeaders?.map((header) => (
+                                  <th key={header} className="px-4 py-2 text-left text-sm font-medium text-gray-500">
+                                    {header}
+                                  </th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-200">
+                              {csvPreview.slice(0, 5).map((row, rowIndex) => (
+                                <tr key={rowIndex}>
+                                  {csvHeaders?.map((header) => (
+                                    <td key={header} className="px-4 py-2 text-sm text-gray-700">
+                                      {row[header]}
+                                    </td>
+                                  ))}
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
 
                     <div className="flex justify-end gap-3 pt-2">
                       <DialogClose asChild>
@@ -177,7 +252,7 @@ export default function BulkSMS() {
                         disabled={isLoading}
                         className="bg-blue-600 hover:bg-blue-700"
                       >
-                        {isLoading ? "Processing..." : "Schedule Messages"}
+                        {isLoading ? "Processing..." : " Messages"}
                       </Button>
                     </div>
                   </form>
@@ -308,6 +383,76 @@ export default function BulkSMS() {
               </Card>
             </TabsContent>
           </Tabs>
+
+          {/* CSV Preview Modal */}
+          <Dialog open={showPreview} onOpenChange={setShowPreview}>
+            <DialogContent className="max-w-lg">
+              <DialogHeader>
+                <DialogTitle>CSV Preview (First Rows)</DialogTitle>
+              </DialogHeader>
+              {csvPreview && csvHeaders && (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full border text-sm">
+                    <thead>
+                      <tr>
+                        {csvHeaders.map((header) => (
+                          <th key={header} className="border px-2 py-1 bg-gray-100">{header}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {csvPreview.map((row, idx) => (
+                        <tr key={idx}>
+                          {csvHeaders.map((header) => (
+                            <td key={header} className="border px-2 py-1">{row[header]}</td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              <div className="flex justify-end pt-4">
+                <Button onClick={() => setShowPreview(false)} type="button" variant="outline">
+                  Close
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+        
+          <Dialog open={showSuccessModal} onOpenChange={setShowSuccessModal}>
+            <DialogContent className="max-w-md flex flex-col items-center justify-center text-center">
+              <div className="flex flex-col items-center gap-4 py-6">
+                <svg width="64" height="64" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="text-green-500">
+                  <circle cx="12" cy="12" r="10" strokeWidth="2" stroke="currentColor" fill="#d1fae5" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12l2 2 4-4" stroke="#10b981" />
+                </svg>
+                <h2 className="text-xl font-bold text-green-700">Success!</h2>
+                <p className="text-gray-700">{successMessage}</p>
+              </div>
+              <Button className="bg-green-600 hover:bg-green-700 text-white mt-4" onClick={() => setShowSuccessModal(false)}>
+                Close
+              </Button>
+            </DialogContent>
+          </Dialog>
+          
+          <Dialog open={showBackendErrorModal} onOpenChange={setShowBackendErrorModal}>
+            <DialogContent className="max-w-md flex flex-col items-center justify-center text-center">
+              <div className="flex flex-col items-center gap-4 py-6">
+                <svg width="64" height="64" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="text-red-500">
+                  <circle cx="12" cy="12" r="10" strokeWidth="2" stroke="currentColor" fill="#fee2e2" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01" stroke="#ef4444" />
+                </svg>
+                <h2 className="text-xl font-bold text-red-700">Backend Unreachable. Try connecting to the Bulk SMS Endpoint</h2>
+                <p className="text-gray-700">{backendErrorMessage}</p>
+              </div>
+              <Button className="bg-red-600 hover:bg-red-700 text-white mt-4" onClick={() => setShowBackendErrorModal(false)}>
+                Close
+              </Button>
+            </DialogContent>
+          </Dialog>
+          
         </div>
       </SidebarLayout>
     </div>
