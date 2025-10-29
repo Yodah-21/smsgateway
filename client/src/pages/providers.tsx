@@ -10,20 +10,24 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Plus,
-  ChevronLeft,
-  ChevronRight,
-} from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight } from "lucide-react";
 import SidebarLayout from "@/components/SidebarLayout";
 import Navbar from "@/components/Navbar";
-import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogClose,
+} from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 
 interface Provider {
   id: string;
+  code: string;
   name: string;
-  status: boolean;
+  status: boolean | string;
   countryCode: string;
 }
 
@@ -33,15 +37,22 @@ export default function Providers() {
 
   const url = "http://172.27.34.87:8080/telonenfe/providers";
 
+  // Fetch all providers
   useEffect(() => {
     const fetchProviders = async () => {
       try {
         const response = await fetch(url);
-        if (!response.ok) {
-          throw new Error("Failed to fetch providers");
-        }
+        if (!response.ok) throw new Error("Failed to fetch providers");
+
         const data = await response.json();
-        setProviders(data);
+
+        const normalizedData = data.map((p: any, index: number) => ({
+          ...p,
+          status: p.status === true || p.status === "true",
+          id: p.id || `temp-${index}`,
+        }));
+
+        setProviders(normalizedData);
       } catch (error) {
         console.error("Error fetching providers:", error);
       } finally {
@@ -52,14 +63,33 @@ export default function Providers() {
     fetchProviders();
   }, []);
 
-  const handleToggleStatus = (id: string) => {
-    setProviders(prev =>
-      prev.map(provider =>
-        provider.id === id
-          ? { ...provider, status: !provider.status }
-          : provider
+  // Optimistic toggle
+  const handleToggleStatus = async (code: string, currentStatus: boolean) => {
+    // Update UI immediately
+    setProviders((prev) =>
+      prev.map((provider) =>
+        provider.code === code ? { ...provider, status: !currentStatus } : provider
       )
     );
+
+    const endpoint = currentStatus
+      ? `http://172.27.34.87:8080/telonenfe/provider/deactivate/${code}`
+      : `http://172.27.34.87:8080/telonenfe/provider/activate/${code}`;
+
+    try {
+      const response = await fetch(endpoint, { method: "GET" });
+      if (!response.ok) throw new Error("Failed to update provider status");
+      console.log("Backend confirmed status update");
+    } catch (error) {
+      console.error("Error updating status:", error);
+
+      // Rollback if backend failed
+      setProviders((prev) =>
+        prev.map((provider) =>
+          provider.code === code ? { ...provider, status: currentStatus } : provider
+        )
+      );
+    }
   };
 
   return (
@@ -84,42 +114,54 @@ export default function Providers() {
                   </DialogHeader>
                   <form className="space-y-4">
                     <div>
-                      <Label htmlFor="name" className="font-semibold text-red-600">* Name</Label>
-                      <input id="name" type="text" placeholder="Enter  name" className="w-full border rounded px-2 py-1 mt-1" />
+                      <Label htmlFor="name" className="font-semibold text-red-600">
+                        * Name
+                      </Label>
+                      <input
+                        id="name"
+                        type="text"
+                        placeholder="Enter name"
+                        className="w-full border rounded px-2 py-1 mt-1"
+                      />
                     </div>
                     <div>
-                      <Label htmlFor="countryCode" className="font-semibold text-red-600">* Country Code</Label>
-                      <input id="countryCode" type="text" placeholder="Enter  countryCode" className="w-full border rounded px-2 py-1 mt-1" />
+                      <Label htmlFor="countryCode" className="font-semibold text-red-600">
+                        * Country Code
+                      </Label>
+                      <input
+                        id="countryCode"
+                        type="text"
+                        placeholder="Enter country code"
+                        className="w-full border rounded px-2 py-1 mt-1"
+                      />
                     </div>
                     <div>
-                      <Label htmlFor="priority" className="font-semibold text-red-600">* Priority</Label>
-                      <input id="priority" type="text" placeholder="Enter  priority" className="w-full border rounded px-2 py-1 mt-1" />
-                    </div>
-                    <div>
-                      <Label htmlFor="dispatcher" className="font-semibold text-red-600">* Notification Dispatcher</Label>
-                      <select id="dispatcher" className="w-full border rounded px-2 py-1 mt-1">
-                        <option value="">Select</option>
-                        {/* Add options dynamically */}
-                      </select>
-                    </div>
-                    <div>
-                      <Label htmlFor="supportsEmail" className="font-semibold text-red-600">* Supports Email</Label>
-                      <select id="supportsEmail" className="w-full border rounded px-2 py-1 mt-1">
-                        <option value="">Select</option>
-                        {/* Add options dynamically */}
-                      </select>
-                    </div>
-                    <div>
-                      <Label htmlFor="supportsSMS" className="font-semibold text-red-600">* Support SMS</Label>
-                      <select id="supportsSMS" className="w-full border rounded px-2 py-1 mt-1">
-                        <option value="">Select</option>
-                        {/* Add options dynamically */}
-                      </select>
+                      <Label htmlFor="priority" className="font-semibold text-red-600">
+                        * Priority
+                      </Label>
+                      <input
+                        id="priority"
+                        type="text"
+                        placeholder="Enter priority"
+                        className="w-full border rounded px-2 py-1 mt-1"
+                      />
                     </div>
                     <div className="flex items-center space-x-4 mt-4">
-                      <Button type="button" disabled className="bg-gray-200 text-gray-500 cursor-not-allowed">Save</Button>
+                      <Button
+                        type="button"
+                        disabled
+                        className="bg-gray-200 text-gray-500 cursor-not-allowed"
+                      >
+                        Save
+                      </Button>
                       <DialogClose asChild>
-                        <Button type="button" variant="outline" className="text-blue-600 border-blue-600">Cancel</Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="text-blue-600 border-blue-600"
+                        >
+                          Cancel
+                        </Button>
                       </DialogClose>
                     </div>
                   </form>
@@ -137,7 +179,7 @@ export default function Providers() {
                     <TableHead className="font-semibold text-gray-700 py-4 px-6">Name</TableHead>
                     <TableHead className="font-semibold text-gray-700 py-4 px-6">Status</TableHead>
                     <TableHead className="font-semibold text-gray-700 py-4 px-6">Country Code</TableHead>
-                    <TableHead className="font-semibold text-gray-700 py-4 px-6">Active/Deactive</TableHead>
+                    <TableHead className="font-semibold text-gray-700 py-4 px-6">Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -158,13 +200,21 @@ export default function Providers() {
                       <TableRow key={provider.id} className="border-b border-gray-100">
                         <TableCell className="py-6 px-6 font-medium">{provider.name}</TableCell>
                         <TableCell className="py-6 px-6">
-                          <span className="text-gray-600">{provider.status ? 'Active' : 'Inactive'}</span>
+                          <span
+                            className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                              provider.status ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+                            }`}
+                          >
+                            {String(provider.status)}
+                          </span>
                         </TableCell>
                         <TableCell className="py-6 px-6 text-gray-600">{provider.countryCode}</TableCell>
                         <TableCell className="py-6 px-6">
                           <Switch
                             checked={!!provider.status}
-                            onCheckedChange={() => handleToggleStatus(provider.id)}
+                            onCheckedChange={() =>
+                              handleToggleStatus(provider.code, !!provider.status)
+                            }
                             className="data-[state=checked]:bg-[hsl(213,87%,42%)]"
                           />
                         </TableCell>
@@ -181,7 +231,11 @@ export default function Providers() {
             <Button variant="outline" size="sm" className="flex items-center">
               <ChevronLeft className="w-4 h-4" />
             </Button>
-            <Button variant="outline" size="sm" className="bg-[hsl(213,87%,42%)] text-white border-[hsl(213,87%,42%]">
+            <Button
+              variant="outline"
+              size="sm"
+              className="bg-[hsl(213,87%,42%)] text-white border-[hsl(213,87%,42%)]"
+            >
               1
             </Button>
             <Button variant="outline" size="sm" className="flex items-center">

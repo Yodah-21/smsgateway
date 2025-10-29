@@ -11,10 +11,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, ChevronLeft, ChevronRight, Edit, User } from 'lucide-react';
 import SidebarLayout from "@/components/SidebarLayout";
 import Navbar from "@/components/Navbar";
-import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogClose
+} from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
@@ -32,11 +39,16 @@ interface Account {
   accountStatus: string;
   smsUnits: number;
   senderId: string;
+  role: string;
 }
 
 export default function Accounts() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
+  const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+
   const itemsPerPage = 5;
   const url = "http://172.27.34.87:8080/telonenfe/accounts";
 
@@ -68,7 +80,6 @@ export default function Accounts() {
   // Add Account API
   const handleAddAccount = async (formData: any, closeDialog: () => void) => {
     try {
-      // Frontend duplicate check
       const duplicateUserName = accounts.find(acc => acc.userName === formData.userName);
       const duplicateAccountName = accounts.find(acc => acc.accountName === formData.accountName);
       if (duplicateUserName) {
@@ -93,6 +104,7 @@ export default function Accounts() {
         accountStatus: "ACTIVE",
         smsUnits: Number(formData.smsUnits),
         senderId: formData.senderId,
+        role: formData.role,
       };
 
       const res = await fetch("http://172.27.34.87:8080/telonenfe/account/register", {
@@ -108,11 +120,9 @@ export default function Accounts() {
       }
 
       const savedAccount: Account = await res.json();
-
-      setAccounts(prev => [...prev, savedAccount]); // Add new account at the end
+      setAccounts(prev => [...prev, savedAccount]); 
       closeDialog();
 
-      // Move to last page if needed
       const newTotalItems = accounts.length + 1;
       const newTotalPages = Math.ceil(newTotalItems / itemsPerPage);
       setCurrentPage(newTotalPages);
@@ -123,31 +133,63 @@ export default function Accounts() {
     }
   };
 
-  // Delete Account
-  const handleDeleteAccount = async (accountId: number) => {
-    if (!confirm("Are you sure you want to permanently delete this account?")) return;
+  // Edit Account API
+  const handleEditAccount = async (formData: any, closeDialog: () => void) => {
+    if (!selectedAccount) return;
 
     try {
-      const res = await fetch(`http://172.27.34.87:8080/telonenfe/account/${accountId}`, {
-        method: "DELETE",
+      const payload = {
+        ...selectedAccount,
+        ...formData,
+        smsUnits: Number(formData.smsUnits),
+      };
+
+      const res = await fetch(`http://172.27.34.87:8080/telonenfe/account/${selectedAccount.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
       });
 
       if (!res.ok) {
         const text = await res.text();
-        alert(text || `Failed to delete account. Status: ${res.status}`);
+        alert(text || `Failed to update account. Status: ${res.status}`);
         return;
       }
 
-      setAccounts(prev => prev.filter(acc => acc.id !== accountId));
-
-      // Adjust current page if last item was removed
-      const newTotalItems = accounts.length - 1;
-      const newTotalPages = Math.ceil(newTotalItems / itemsPerPage);
-      if (currentPage > newTotalPages) setCurrentPage(newTotalPages);
-
+      const updatedAccount: Account = await res.json();
+      setAccounts(prev => prev.map(acc => acc.id === updatedAccount.id ? updatedAccount : acc));
+      closeDialog();
+      setSelectedAccount(null);
     } catch (err) {
       console.error(err);
-      alert("Failed to delete account. Please try again.");
+      alert("Failed to update account. Please try again.");
+    }
+  };
+
+  // Toggle Activate / Suspend
+  const toggleAccountStatus = async (account: Account) => {
+    const isActive = account.accountStatus === "ACTIVE";
+    const endpoint = isActive
+      ? `http://172.27.34.87:8080/telonenfe/accounts/deactivate/${account.accountCode}`
+      : `http://172.27.34.87:8080/telonenfe/accounts/activate/${account.accountCode}`;
+
+    try {
+      const res = await fetch(endpoint, { method: "PUT" });
+      if (!res.ok) {
+        const text = await res.text();
+        alert(text || `Failed to ${isActive ? "suspend" : "activate"} account`);
+        return;
+      }
+      setAccounts(prev =>
+        prev.map(acc =>
+          acc.accountCode === account.accountCode
+            ? { ...acc, accountStatus: isActive ? "SUSPENDED" : "ACTIVE" }
+            : acc
+        )
+      );
+    } catch (err) {
+      console.error(err);
+      alert("Failed to update account status. Try again.");
     }
   };
 
@@ -159,6 +201,7 @@ export default function Accounts() {
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
             <h1 className="text-2xl font-semibold text-gray-900">Accounts</h1>
+            {/* Add Account Dialog */}
             <Dialog>
               <DialogTrigger asChild>
                 <Button className="bg-[hsl(213,87%,42%)] hover:bg-[hsl(213,87%,35%)] text-white">
@@ -284,12 +327,160 @@ export default function Accounts() {
                       </TableCell>
                       <TableCell className="px-3 py-4">{account.accountStatus}</TableCell>
                       <TableCell className="px-3 py-4 flex space-x-2">
-                        {account.accountStatus === "ACTIVE" ? (
-                          <Button variant="outline" size="sm" className="border-blue-200 text-blue-600 hover:bg-blue-50">Suspend</Button>
-                        ) : (
-                          <Button variant="outline" size="sm" className="border-green-200 text-green-600 hover:bg-green-50">Activate</Button>
-                        )}
-                        <Button variant="destructive" size="sm" onClick={() => handleDeleteAccount(account.id)}>Delete</Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className={`${
+                            account.accountStatus === "ACTIVE"
+                              ? "border-blue-200 text-blue-600 hover:bg-blue-50"
+                              : "border-green-200 text-green-600 hover:bg-green-50"
+                          }`}
+                          onClick={() => toggleAccountStatus(account)}
+                        >
+                          {account.accountStatus === "ACTIVE" ? "Suspend" : "Activate"}
+                        </Button>
+
+                        {/* Edit Account Icon */}
+                        <Dialog open={isEditModalOpen && selectedAccount?.id === account.id} onOpenChange={setIsEditModalOpen}>
+                          <DialogTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="p-2 border-gray-200 text-gray-600 hover:bg-gray-100"
+                              onClick={() => setSelectedAccount(account) || setIsEditModalOpen(true)}
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="max-w-2xl w-full">
+                            <DialogHeader>
+                              <DialogTitle>Edit Account</DialogTitle>
+                            </DialogHeader>
+                            {selectedAccount && (
+                              <form
+                                className="grid grid-cols-2 gap-x-8 gap-y-4"
+                                onSubmit={async (e) => {
+                                  e.preventDefault();
+                                  const form = e.target as any;
+                                  const data = {
+                                    firstName: form.firstName.value,
+                                    lastName: form.lastName.value,
+                                    userName: form.userName.value,
+                                    smsUnits: form.smsAmount.value,
+                                    role: form.role.value,
+                                    accountCode: form.accountCode.value,
+                                    accountName: form.accountName.value,
+                                    email: form.email.value,
+                                    phoneNumber: form.phoneNumber.value,
+                                    senderId: form.senderId.value,
+                                    password: form.password.value,
+                                  };
+                                  await handleEditAccount(data, () => form.reset());
+                                  setIsEditModalOpen(false);
+                                }}
+                              >
+                                <div>
+                                  <Label htmlFor="firstName">* First Name</Label>
+                                  <Input id="firstName" defaultValue={selectedAccount.firstName} className="mt-1" required />
+                                </div>
+                                <div>
+                                  <Label htmlFor="lastName">* Last Name</Label>
+                                  <Input id="lastName" defaultValue={selectedAccount.lastName} className="mt-1" required />
+                                </div>
+                                <div>
+                                  <Label htmlFor="userName">* User Name</Label>
+                                  <Input id="userName" defaultValue={selectedAccount.userName} className="mt-1" required />
+                                </div>
+                                <div>
+                                  <Label htmlFor="smsAmount">* SMS Amount</Label>
+                                  <Input id="smsAmount" defaultValue={selectedAccount.smsUnits} className="mt-1" required />
+                                </div>
+                                <div>
+                                  <Label htmlFor="role">* Role</Label>
+                                  <Select defaultValue={selectedAccount.role}>
+                                    <SelectTrigger id="role" className="mt-1">
+                                      <SelectValue placeholder="Select role" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="admin">Admin</SelectItem>
+                                      <SelectItem value="user">User</SelectItem>
+                                      <SelectItem value="manager">Manager</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div>
+                                  <Label htmlFor="accountCode">* Account Code</Label>
+                                  <Input id="accountCode" defaultValue={selectedAccount.accountCode} className="mt-1" required />
+                                </div>
+                                <div>
+                                  <Label htmlFor="accountName">* Account Name</Label>
+                                  <Input id="accountName" defaultValue={selectedAccount.accountName} className="mt-1" required />
+                                </div>
+                                <div>
+                                  <Label htmlFor="email">* Email</Label>
+                                  <Input id="email" defaultValue={selectedAccount.email} className="mt-1" required />
+                                </div>
+                                <div>
+                                  <Label htmlFor="phoneNumber">* Phone Number</Label>
+                                  <Input id="phoneNumber" defaultValue={selectedAccount.phoneNumber} className="mt-1" required />
+                                </div>
+                                <div>
+                                  <Label htmlFor="senderId">* Sender ID</Label>
+                                  <Input id="senderId" defaultValue={selectedAccount.senderId} className="mt-1" required />
+                                </div>
+                                <div className="col-span-2">
+                                  <Label htmlFor="password">* Password</Label>
+                                  <Input id="password" type="password" defaultValue={selectedAccount.password} className="mt-1" required />
+                                </div>
+                                <div className="col-span-2 flex items-center space-x-4 mt-2">
+                                  <Button type="submit" className="bg-blue-600 text-white">Save</Button>
+                                  <DialogClose asChild>
+                                    <Button type="button" variant="outline" className="text-blue-600 border-blue-600" onClick={() => setIsEditModalOpen(false)}>Cancel</Button>
+                                  </DialogClose>
+                                </div>
+                              </form>
+                            )}
+                          </DialogContent>
+                        </Dialog>
+
+                        {/* User Account Details Icon */}
+                        <Dialog open={isDetailsModalOpen && selectedAccount?.id === account.id} onOpenChange={setIsDetailsModalOpen}>
+                          <DialogTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="p-2 border-gray-200 text-gray-600 hover:bg-gray-100"
+                              onClick={() => setSelectedAccount(account) || setIsDetailsModalOpen(true)}
+                            >
+                              <User className="w-4 h-4" />
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="max-w-xl w-full">
+                            <DialogHeader>
+                              <DialogTitle>User Account Details</DialogTitle>
+                            </DialogHeader>
+                            {selectedAccount && (
+                              <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
+                                <div><strong>First Name:</strong> {selectedAccount.firstName}</div>
+                                <div><strong>Last Name:</strong> {selectedAccount.lastName}</div>
+                                <div><strong>User Name:</strong> {selectedAccount.userName}</div>
+                                <div><strong>Account Name:</strong> {selectedAccount.accountName}</div>
+                                <div><strong>Account Code:</strong> {selectedAccount.accountCode}</div>
+                                <div><strong>Email:</strong> {selectedAccount.email}</div>
+                                <div><strong>Phone Number:</strong> {selectedAccount.phoneNumber}</div>
+                                <div><strong>SMS Units:</strong> {selectedAccount.smsUnits}</div>
+                                <div><strong>Sender ID:</strong> {selectedAccount.senderId}</div>
+                                <div><strong>Status:</strong> {selectedAccount.accountStatus}</div>
+                                <div><strong>Role:</strong> {selectedAccount.role}</div>
+                              </div>
+                            )}
+                            <div className="mt-4">
+                              <DialogClose asChild>
+                                <Button variant="outline" className="text-blue-600 border-blue-600" onClick={() => setIsDetailsModalOpen(false)}>Close</Button>
+                              </DialogClose>
+                            </div>
+                          </DialogContent>
+                        </Dialog>
                       </TableCell>
                     </TableRow>
                   ))}
